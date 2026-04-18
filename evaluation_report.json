@@ -1,0 +1,70 @@
+{
+  "train_metrics": {
+    "mae": 58699.81,
+    "rmse": 149490.83,
+    "r2": 0.3237,
+    "mape": 893.22
+  },
+  "test_metrics": {
+    "mae": 64279.84,
+    "rmse": 187126.79,
+    "r2": 0.1507,
+    "mape": 905.86
+  },
+  "oob_r2": 0.1388,
+  "cv_mae_mean": 66864.99,
+  "cv_mae_std": 2626.58,
+  "cv_r2_mean": 0.1385,
+  "cv_r2_std": 0.0295,
+  "n_train": 2544,
+  "n_test": 636,
+  "features": [
+    "area_m2",
+    "bedrooms_n",
+    "bathrooms_n",
+    "floors_n",
+    "district",
+    "house_type"
+  ],
+  "n_estimators": 50,
+  "avg_single_tree_mae": 71212.34,
+  "variance_reduction_pct": 9.73,
+  "compare": {
+    "DecisionTree (đơn lẻ)": {
+      "cv_mae": 69908.38,
+      "cv_mae_std": 3773.22,
+      "cv_r2": 0.044,
+      "cv_r2_std": 0.0572
+    },
+    "Bagging (n=10)": {
+      "cv_mae": 68091.25,
+      "cv_mae_std": 2277.02,
+      "cv_r2": 0.1198,
+      "cv_r2_std": 0.0373
+    },
+    "Bagging (n=25)": {
+      "cv_mae": 67279.76,
+      "cv_mae_std": 2429.79,
+      "cv_r2": 0.1315,
+      "cv_r2_std": 0.0276
+    },
+    "Bagging (n=50)": {
+      "cv_mae": 66864.99,
+      "cv_mae_std": 2626.58,
+      "cv_r2": 0.1385,
+      "cv_r2_std": 0.0295
+    },
+    "Bagging (n=100)": {
+      "cv_mae": 66755.29,
+      "cv_mae_std": 2545.55,
+      "cv_r2": 0.1347,
+      "cv_r2_std": 0.0275
+    },
+    "RandomForest (n=100)": {
+      "cv_mae": 66937.43,
+      "cv_mae_std": 2950.29,
+      "cv_r2": 0.1266,
+      "cv_r2_std": 0.0267
+    }
+  }
+}
