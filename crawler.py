@@ -1076,12 +1076,19 @@ def parse_batdongsan_page(html: str, category: str) -> list[dict]:
     return items
 
 
-def has_next_page_batdongsan(html: str) -> bool:
+def has_next_page_batdongsan(html: str, current_page: int = 1) -> bool:
     """Kiểm tra có trang tiếp theo trên batdongsan.com.vn không."""
     soup = BeautifulSoup(html, "html.parser")
+    # Kiểm tra xem có liên kết dẫn tới trang tiếp theo không (ví dụ: /p2, /p3)
+    next_page_suffix = f"/p{current_page + 1}"
+    for a in soup.select("a[href]"):
+        href = a.get("href", "")
+        if href.endswith(next_page_suffix) or f"{next_page_suffix}?" in href or f"{next_page_suffix}/" in href:
+            return True
+            
     nxt = soup.select_one(
         "a.re__pagination-page-next:not(.disabled), "
-        "a[rel='next'], li.next:not(.disabled) a"
+        "a[rel='next'], li.next:not(.disabled) a, a.re__pagination-icon"
     )
     if nxt:
         return True
@@ -1193,9 +1200,24 @@ def crawl_batdongsan_playwright(
             locale="vi-VN",
             timezone_id="Asia/Ho_Chi_Minh"
         )
+        
+        # Tiêm mã giả lập (Stealth) tránh bị phát hiện webdriver
+        context.add_init_script("""
+            Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
+            window.chrome = { runtime: {} };
+            Object.defineProperty(navigator, 'languages', { get: () => ['vi-VN', 'vi', 'en-US', 'en'] });
+            Object.defineProperty(navigator, 'plugins', { get: () => [1, 2, 3, 4, 5] });
+        """)
+        
         page = context.new_page()
 
-        for cat in categories:
+        for idx, cat in enumerate(categories):
+            # Thêm thời gian chờ khi đổi category để tránh kích hoạt Cloudflare
+            if idx > 0:
+                sleep_between = random.uniform(6.0, 10.0)
+                log.info("[BATDONGSAN] Chờ %.2fs trước khi chuyển sang danh mục tiếp theo...", sleep_between)
+                time.sleep(sleep_between)
+
             base_url = CATEGORIES_BDS.get(cat, CATEGORIES_BDS.get("nha-dat"))
             if not base_url:
                 continue
@@ -1205,47 +1227,63 @@ def crawl_batdongsan_playwright(
                 url = base_url if pg == 1 else f"{base_url}/p{pg}"
                 log.info("[BATDONGSAN] Trang %d/%d  %s", pg, start_page + max_pages - 1, url)
 
-                # Loop cho retry trong trường hợp mất internet
                 html = None
-                attempt = 0
-                while attempt < 3:
+                success = False
+                
+                for attempt in range(1, 4):
                     try:
                         page.goto(url, wait_until="domcontentloaded", timeout=30000)
                         
-                        # Đợi selector thẻ tin đăng xuất hiện
+                        # Chờ selector tin đăng xuất hiện
                         selector = "div.re__pr-card, div.pr-card, div.js__card, div.product-item"
                         try:
                             page.wait_for_selector(selector, timeout=12000)
-                        except Exception:
-                            # Fallback sleep
-                            time.sleep(4)
-                            
-                        html = page.content()
-                        # Kiểm tra xem có bị Cloudflare chặn cứng hoặc lỗi gì không
-                        if "cloudflare" in html.lower() and "challenge-running" in html:
-                            log.warning("[BATDONGSAN] Vẫn bị kẹt ở trang Cloudflare challenge. Đang chờ thêm 5s...")
-                            time.sleep(5)
                             html = page.content()
+                            # Kiểm tra xem có còn hiển thị trang challenge không
+                            title = page.title()
+                            if "Just a moment" in title or "Chờ một chút" in title or "challenge-running" in html:
+                                raise Exception("Cloudflare challenge page detected in page title/content")
+                            success = True
+                            break
+                        except Exception:
+                            # Nếu gặp Cloudflare hoặc timeout
+                            title = page.title()
+                            html = page.content()
+                            if "Just a moment" in title or "Chờ một chút" in title or "challenge-running" in html or "cf-challenge" in html:
+                                log.warning("[BATDONGSAN] Phát hiện trang xác minh Cloudflare (Lần thử %d/3). Đang chờ 10s để tự động giải quyết...", attempt)
+                                time.sleep(10)
+                                # Thử chờ selector lại sau khi ngủ
+                                try:
+                                    page.wait_for_selector(selector, timeout=10000)
+                                    html = page.content()
+                                    # Thêm cuộn trang nhẹ để kích hoạt tải dữ liệu
+                                    page.evaluate("window.scrollBy(0, 300)")
+                                    success = True
+                                    break
+                                except Exception:
+                                    pass
                             
-                        break
+                            # Nếu vẫn không được, sleep và reload ở vòng lặp sau
+                            log.warning("[BATDONGSAN] Không tìm thấy tin đăng ở trang %d (Lần thử %d/3). Đang tải lại...", pg, attempt)
+                            time.sleep(random.uniform(4.0, 6.0))
+                            
                     except Exception as e:
                         if _is_network_error(e):
-                            log.warning("🔌 [BATDONGSAN] Mất mạng khi tải trang: %s. Chờ internet phục hồi...", e)
+                            log.warning("🔌 [BATDONGSAN] Mất mạng: %s. Chờ internet phục hồi...", e)
                             _wait_for_internet()
-                            attempt = 0  # reset attempt để thử lại
                         else:
-                            log.warning("[BATDONGSAN] Lỗi tải trang %s (lần %d): %s", url, attempt + 1, e)
-                            attempt += 1
-                            time.sleep(2 ** attempt)
+                            log.warning("[BATDONGSAN] Lỗi tải trang %s (Lần thử %d/3): %s", url, attempt, e)
+                            time.sleep(3)
 
-                if not html:
-                    log.error("[BATDONGSAN] Không thể tải trang %d, dừng category", pg)
+                if not success or not html:
+                    log.error("[BATDONGSAN] Không thể vượt qua Cloudflare hoặc tải trang %d. Dừng category.", pg)
                     break
 
                 listings = parse_batdongsan_page(html, cat)
                 if not listings:
                     # Hãy check xem có thực sự là hết trang hay do selector thay đổi
-                    if "Chờ một chút..." in html or "cloudflare" in html.lower():
+                    title = page.title()
+                    if "Just a moment" in title or "Chờ một chút" in title or "challenge-running" in html or "cf-challenge" in html:
                         log.error("[BATDONGSAN] Phát hiện bị chặn bởi Cloudflare challenge. Dừng category.")
                     else:
                         log.info("[BATDONGSAN] Không tìm thấy tin đăng nào – kết thúc category")
@@ -1267,7 +1305,7 @@ def crawl_batdongsan_playwright(
                 log.info("  [BATDONGSAN] +%d mới | tổng: %d", len(new), len(existing_keys))
                 fout.flush()
 
-                _has_next = has_next_page_batdongsan(html)
+                _has_next = has_next_page_batdongsan(html, pg)
                 if not _has_next:
                     log.info("[BATDONGSAN] Không có trang tiếp theo -> chuyển category")
                     break
