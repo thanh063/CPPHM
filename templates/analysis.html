@@ -1,0 +1,128 @@
+{% extends "base.html" %}
+
+{% block title %}Phân tích & Biểu đồ{% endblock %}
+
+{% block head %}
+<style>
+  .plot-card { border-radius: 20px; overflow: hidden; transition: transform 180ms ease, box-shadow 180ms ease; }
+  .plot-card:hover { transform: translateY(-4px); box-shadow: 0 20px 50px rgba(15,23,42,.12); }
+  .plot-card img { width: 100%; height: auto; display: block; cursor: zoom-in; }
+  .plot-card .plot-label {
+    font-weight: 700; font-size: .9rem; padding: .65rem 1rem;
+    border-top: 1px solid rgba(148,163,184,.12); color: #475569;
+  }
+  .no-plot { min-height: 180px; display: flex; align-items: center; justify-content: center; color: #94a3b8; font-size: .9rem; }
+  .metric-mini { border-radius: 16px; padding: .9rem 1.1rem; background: rgba(255,255,255,.88); border: 1px solid rgba(148,163,184,.13); }
+  .metric-mini .mm-label { font-size:.76rem; font-weight:700; text-transform:uppercase; letter-spacing:.08em; color:#64748b; }
+  .metric-mini .mm-value { font-size:1.4rem; font-weight:800; color:#0f172a; }
+</style>
+{% endblock %}
+
+{% block content %}
+
+{# ─── HERO ────────────────────────────────────────────────────────────────── #}
+<div class="hero-shell mb-4">
+  <h1 class="display-6 fw-bold mb-2">📊 Phân tích & Biểu đồ</h1>
+  <p class="mb-0" style="font-size:1.05rem;">
+    Kết quả đánh giá mô hình Bagging và các biểu đồ phân tích chi tiết.
+  </p>
+</div>
+
+{# ─── METRIC MINI-CARDS ─────────────────────────────────────────────────── #}
+<div class="row g-3 mb-4">
+  <div class="col-6 col-md-3">
+    <div class="metric-mini">
+      <div class="mm-label">Test R²</div>
+      <div class="mm-value">{{ "%.4f"|format(report_view.test_metrics.r2 | default(0)) }}</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="metric-mini">
+      <div class="mm-label">Test MAE</div>
+      <div class="mm-value">{{ "{:,.0f}".format(report_view.test_metrics.mae | default(0)) }} <small style="font-size:.8rem;color:#64748b;">triệu</small></div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="metric-mini">
+      <div class="mm-label">OOB R²</div>
+      <div class="mm-value">{{ "%.4f"|format(report_view.oob_score | default(0)) }}</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="metric-mini">
+      <div class="mm-label">Số cây</div>
+      <div class="mm-value">{{ report_view.n_estimators | default(0) }}</div>
+    </div>
+  </div>
+</div>
+
+{# ─── BIỂU ĐỒ LƯỚI 2×2 ──────────────────────────────────────────────────── #}
+<div class="row g-4 mb-4">
+
+  {% set plots = [
+    ('1_prediction_vs_actual.png', 'Dự đoán vs Thực tế',        '💡 So sánh trực quan giữa giá dự đoán và giá thực tế. Điểm càng gần đường đỏ = dự đoán càng chính xác.'),
+    ('2_residuals.png',            'Phân phối Residuals',         '💡 Kiểm tra phân phối sai số để phát hiện bias hoặc heavy-tail. Histogram và scatter plot.'),
+    ('3_model_comparison.png',     'So sánh các mô hình (CV)',   '💡 Bảng so sánh CV MAE / R² giữa Decision Tree, Bagging và các cấu hình. Thấp hơn = tốt hơn về MAE.'),
+    ('4_learning_curve.png',       'Learning Curve',              '💡 Theo dõi Train R² vs CV R² khi tăng số lượng mẫu. Khoảng cách hẹp = ít overfitting.'),
+  ] %}
+
+  {% for fname, title, note in plots %}
+  <div class="col-md-6">
+    <div class="glass-card plot-card">
+      {% if fname in plot_files %}
+        <img src="{{ url_for('serve_plot', filename=fname) }}" alt="{{ title }}"
+             onclick="openModal(this.src)">
+      {% else %}
+        <div class="no-plot">📈 Chạy <code>bagging_train.py --plot</code> để tạo biểu đồ</div>
+      {% endif %}
+      <div class="plot-label">{{ title }}</div>
+      <div class="alert alert-info m-2 mt-0 py-2 mb-2" style="font-size:.82rem;">{{ note }}</div>
+    </div>
+  </div>
+  {% endfor %}
+
+</div>
+
+{# ─── FEATURE IMPORTANCE — FULL WIDTH ────────────────────────────────────── #}
+<div class="row g-4 mb-5">
+  <div class="col-12">
+    <div class="glass-card plot-card">
+      {% if '5_feature_importance.png' in plot_files %}
+        <img src="{{ url_for('serve_plot', filename='5_feature_importance.png') }}" alt="Feature Importance"
+             onclick="openModal(this.src)">
+      {% else %}
+        <div class="no-plot">📈 Chạy <code>bagging_train.py --plot</code> để tạo biểu đồ</div>
+      {% endif %}
+      <div class="plot-label">Feature Importance (Permutation)</div>
+      <div class="alert alert-info m-2 mt-0 py-2 mb-2" style="font-size:.82rem;">
+        💡 Các đặc trưng có đóng góp lớn nhất vào dự đoán. Diện tích và quận/huyện thường có tầm quan trọng cao nhất.
+      </div>
+    </div>
+  </div>
+</div>
+
+{# ─── MODAL ZOOM ─────────────────────────────────────────────────────────── #}
+<div class="modal fade" id="plotModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-xl modal-dialog-centered">
+    <div class="modal-content bg-dark">
+      <div class="modal-body p-1">
+        <img id="modalImg" src="" alt="plot" class="img-fluid w-100" style="border-radius:8px;">
+      </div>
+      <div class="modal-footer border-0 pt-0">
+        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Đóng</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script>
+  function openModal(src) {
+    document.getElementById('modalImg').src = src;
+    new bootstrap.Modal(document.getElementById('plotModal')).show();
+  }
+</script>
+{% endblock %}

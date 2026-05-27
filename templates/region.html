@@ -1,0 +1,334 @@
+{% extends "base.html" %}
+
+{% block title %}Giá nhà theo tỉnh thành{% endblock %}
+
+{% block head %}
+<style>
+  /* ── Hero override: text luôn hiển thị rõ ── */
+  .region-hero h1,
+  .region-hero p { color: #f8fafc !important; text-shadow: 0 2px 8px rgba(0,0,0,.55); }
+
+  /* ── Summary cards ── */
+  .summary-card {
+    border-radius: 20px;
+    padding: 1.2rem 1.4rem;
+    background: rgba(255,255,255,.88);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(148,163,184,.14);
+    box-shadow: 0 12px 32px rgba(15,23,42,.07);
+    transition: transform 180ms ease, box-shadow 180ms ease;
+  }
+  .summary-card:hover { transform: translateY(-3px); box-shadow: 0 20px 48px rgba(15,23,42,.12); }
+  .summary-card .sc-label { font-size:.78rem; font-weight:700; text-transform:uppercase; letter-spacing:.08em; color:#64748b; }
+  .summary-card .sc-value { font-size:1.7rem; font-weight:800; color:#0f172a; line-height:1.1; margin-top:.2rem; }
+  .summary-card .sc-unit  { font-size:.85rem; color:#64748b; margin-top:.1rem; }
+
+  /* ── Top-5 cards ── */
+  .top5-item {
+    border-radius: 16px;
+    background: rgba(255,255,255,.9);
+    border: 1px solid rgba(148,163,184,.12);
+    padding: 1rem 1.1rem;
+    margin-bottom: .7rem;
+    display: flex;
+    align-items: center;
+    gap: .8rem;
+    transition: transform 160ms ease, box-shadow 160ms ease;
+    box-shadow: 0 4px 14px rgba(15,23,42,.05);
+  }
+  .top5-item:hover { transform: translateX(4px); box-shadow: 0 8px 24px rgba(15,23,42,.1); }
+
+  .top5-item.expensive { border-left: 5px solid; border-image: linear-gradient(180deg,#ef4444,#f97316) 1; }
+  .top5-item.cheap     { border-left: 5px solid #22c55e; }
+
+  .top5-rank {
+    font-size: 1.4rem; font-weight: 900; min-width: 2rem; text-align: center;
+  }
+  .expensive .top5-rank { color: #ef4444; }
+  .cheap     .top5-rank { color: #22c55e; }
+
+  .top5-name  { font-weight: 700; font-size: 1rem; color: #0f172a; }
+  .top5-price { font-size:.88rem; color:#64748b; margin-top:.1rem; }
+  .top5-badge-expensive { background:#fee2e2; color:#b91c1c; font-weight:700; border-radius:999px; padding:.2rem .6rem; font-size:.75rem; }
+  .top5-badge-cheap     { background:#dcfce7; color:#15803d; font-weight:700; border-radius:999px; padding:.2rem .6rem; font-size:.75rem; }
+
+  .section-heading {
+    font-weight: 800; font-size: 1.05rem; text-transform: uppercase;
+    letter-spacing: .06em; margin-bottom: 1rem;
+  }
+  .heading-expensive { color:#dc2626; }
+  .heading-cheap     { color:#16a34a; }
+
+  /* ── Table ── */
+  #regionTable { font-size: .92rem; }
+  #regionTable thead th { background:#eff6ff; color:#1e3a5f; font-weight:700; }
+  .row-max td { background:#fff1f2 !important; }
+  .row-min td { background:#f0fdf4 !important; }
+</style>
+{% endblock %}
+
+{% block content %}
+
+{# ─── HERO ────────────────────────────────────────────────────────────────── #}
+<div class="hero-shell region-hero mb-4">
+  <h1 class="display-6 fw-bold mb-2">🏘️ Giá nhà theo tỉnh thành</h1>
+  <p class="mb-0" style="font-size:1.05rem;">
+    Tổng hợp giá bất động sản theo từng tỉnh, thành phố trên cả nước từ dữ liệu thực tế.
+  </p>
+</div>
+
+{% if error is defined and error %}
+<div class="alert alert-danger mb-4">⚠️ {{ error }}</div>
+{% endif %}
+
+{# ─── SUMMARY CARDS ───────────────────────────────────────────────────────── #}
+{% if summary %}
+<div class="row g-3 mb-4">
+  <div class="col-6 col-md-3">
+    <div class="summary-card">
+      <div class="sc-label">Tổng BĐS</div>
+      <div class="sc-value">{{ "{:,}".format(summary.total_bds) }}</div>
+      <div class="sc-unit">bất động sản</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="summary-card">
+      <div class="sc-label">Số tỉnh/TP</div>
+      <div class="sc-value">{{ summary.n_provinces }}</div>
+      <div class="sc-unit">tỉnh / thành phố</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="summary-card">
+      <div class="sc-label">Giá trung vị</div>
+      <div class="sc-value">{{ summary.median_ty }}</div>
+      <div class="sc-unit">tỷ đồng (cả nước)</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="summary-card">
+      <div class="sc-label">Giá / m²</div>
+      <div class="sc-value">{{ summary.ppm2_m }}</div>
+      <div class="sc-unit">triệu / m² (trung vị)</div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{# ─── TOP 5 SONG SONG ─────────────────────────────────────────────────────── #}
+<div class="row g-4 mb-4">
+
+  {# CỘT TRÁI — ĐẮT NHẤT #}
+  <div class="col-md-6">
+    <div class="glass-card p-4 h-100">
+      <div class="section-heading heading-expensive">🔥 Top 5 Tỉnh Đắt Nhất</div>
+      {% if top_expensive %}
+        {% for item in top_expensive %}
+        <div class="top5-item expensive">
+          <div class="top5-rank">#{{ loop.index }}</div>
+          <div class="flex-fill">
+            <div class="top5-name">{{ item.province }}</div>
+            <div class="top5-price">Giá m²: <strong>{{ item.per_m2 }} triệu</strong></div>
+          </div>
+          <div>
+            <span class="top5-badge-expensive">{{ item.count }} BĐS</span>
+          </div>
+        </div>
+        {% endfor %}
+      {% else %}
+        <p class="text-muted">Không có dữ liệu.</p>
+      {% endif %}
+    </div>
+  </div>
+
+  {# CỘT PHẢI — GIÁ TỐT NHẤT #}
+  <div class="col-md-6">
+    <div class="glass-card p-4 h-100">
+      <div class="section-heading heading-cheap">💚 Top 5 Tỉnh Giá Tốt Nhất</div>
+      {% if top_cheap %}
+        {% for item in top_cheap %}
+        <div class="top5-item cheap">
+          <div class="top5-rank">#{{ loop.index }}</div>
+          <div class="flex-fill">
+            <div class="top5-name">{{ item.province }}</div>
+            <div class="top5-price">Giá m²: <strong>{{ item.per_m2 }} triệu</strong></div>
+          </div>
+          <div>
+            <span class="top5-badge-cheap">{{ item.count }} BĐS</span>
+          </div>
+        </div>
+        {% endfor %}
+      {% else %}
+        <p class="text-muted">Không có dữ liệu.</p>
+      {% endif %}
+    </div>
+  </div>
+
+</div>
+
+{# ─── BẢNG THỐNG KÊ ───────────────────────────────────────────────────────── #}
+<div class="row mb-4">
+  <div class="col-12 glass-card p-4">
+    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+      <h5 class="mb-0 fw-bold">📊 Thống kê theo tỉnh</h5>
+      <div class="input-group" style="max-width:280px;">
+        <span class="input-group-text">🔍</span>
+        <input id="searchInput" class="form-control" placeholder="Tìm tên tỉnh...">
+      </div>
+    </div>
+
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0" id="regionTable">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Tỉnh / TP</th>
+            <th class="text-end">Số BĐS</th>
+            <th class="text-end">Thấp nhất (tỷ)</th>
+            <th class="text-end">Trung vị (tỷ)</th>
+            <th class="text-end">Cao nhất (tỷ)</th>
+            <th class="text-end">Giá / m² (tr)</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% if stats %}
+            {% for row in stats %}
+            <tr class="{% if row.is_max %}row-max{% elif row.is_min %}row-min{% endif %}"
+                data-name="{{ row.province }}">
+              <td class="text-muted small">{{ loop.index }}</td>
+              <td>
+                <strong>{{ row.province }}</strong>
+                {% if row.is_max %}<span class="ms-1 badge bg-danger" style="font-size:.7rem;">Cao nhất</span>{% endif %}
+                {% if row.is_min %}<span class="ms-1 badge bg-success" style="font-size:.7rem;">Thấp nhất</span>{% endif %}
+              </td>
+              <td class="text-end">{{ row.count }}</td>
+              <td class="text-end">{{ row.min_price }}</td>
+              <td class="text-end">
+                <span class="badge {% if row.median_price | float > 5 %}bg-danger{% elif row.median_price | float >= 2 %}bg-warning text-dark{% else %}bg-success{% endif %}">
+                  {{ row.median_price }}
+                </span>
+              </td>
+              <td class="text-end">{{ row.max_price }}</td>
+              <td class="text-end">{{ row.per_m2 }}</td>
+            </tr>
+            {% endfor %}
+          {% else %}
+            <tr><td colspan="7" class="text-center text-muted py-4">Không có dữ liệu.</td></tr>
+          {% endif %}
+        </tbody>
+      </table>
+    </div>
+
+    <nav class="mt-3"><ul class="pagination pagination-sm" id="pager"></ul></nav>
+  </div>
+</div>
+
+{# ─── BIỂU ĐỒ TOP 15 ─────────────────────────────────────────────────────── #}
+<div class="row mb-5">
+  <div class="col-12 glass-card p-4">
+    <h5 class="mb-3 fw-bold">📈 Top 15 tỉnh theo giá trung vị (tỷ VND)</h5>
+    <canvas id="medianChart" height="500"></canvas>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+  /* ─── Search filter ─── */
+  (function () {
+    const input = document.getElementById('searchInput');
+    const tbody = document.querySelector('#regionTable tbody');
+    if (!input || !tbody) return;
+    input.addEventListener('input', function () {
+      const q = this.value.trim().toLowerCase();
+      Array.from(tbody.rows).forEach(r => {
+        r.style.display = (r.dataset.name || '').toLowerCase().includes(q) ? '' : 'none';
+      });
+      window.buildPager(1);
+    });
+  })();
+
+  /* ─── Pagination ─── */
+  (function () {
+    const PER_PAGE = 15;
+    const tbody = document.querySelector('#regionTable tbody');
+    const pager = document.getElementById('pager');
+    if (!tbody) return;
+
+    function visible() { return Array.from(tbody.rows).filter(r => r.style.display !== 'none'); }
+
+    window.buildPager = function (page) {
+      page = page || 1;
+      const rows = visible();
+      const total = rows.length;
+      const pages = Math.max(1, Math.ceil(total / PER_PAGE));
+      page = Math.min(Math.max(1, page), pages);
+
+      Array.from(tbody.rows).forEach(r => r.style.display = 'none');
+      rows.slice((page - 1) * PER_PAGE, page * PER_PAGE).forEach(r => r.style.display = '');
+
+      pager.innerHTML = '';
+      for (let p = 1; p <= pages; p++) {
+        const li = document.createElement('li');
+        li.className = 'page-item' + (p === page ? ' active' : '');
+        const a = document.createElement('a');
+        a.className = 'page-link'; a.href = '#'; a.textContent = p;
+        a.addEventListener('click', e => { e.preventDefault(); window.buildPager(p); });
+        li.appendChild(a); pager.appendChild(li);
+      }
+    };
+
+    document.addEventListener('DOMContentLoaded', () => window.buildPager(1));
+  })();
+
+  /* ─── Chart.js ─── */
+  (function () {
+    const raw = {{ stats | tojson | safe }};
+    const canvas = document.getElementById('medianChart');
+    if (!canvas || !Array.isArray(raw)) return;
+
+    const arr = raw
+      .filter(r => r.province && r.median_price != null)
+      .sort((a, b) => b.median_price - a.median_price)
+      .slice(0, 15);
+
+    const labels = arr.map(r => r.province);
+    const data   = arr.map(r => r.median_price);
+    const colors = arr.map(r =>
+      r.is_max ? '#ef4444' : r.is_min ? '#22c55e' : '#3b82f6'
+    );
+
+    new Chart(canvas.getContext('2d'), {
+      type: 'bar',
+      data: {
+        labels,
+        datasets: [{
+          label: 'Trung vị (tỷ VND)',
+          data,
+          backgroundColor: colors,
+          borderRadius: 6,
+        }]
+      },
+      options: {
+        indexAxis: 'y',
+        responsive: true,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              label: ctx => ` ${ctx.parsed.x} tỷ VND`
+            }
+          }
+        },
+        scales: {
+          x: { title: { display: true, text: 'Tỷ VND' }, grid: { color: 'rgba(0,0,0,.06)' } },
+          y: { ticks: { autoSkip: false }, grid: { display: false } }
+        }
+      }
+    });
+  })();
+</script>
+{% endblock %}

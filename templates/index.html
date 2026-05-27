@@ -1,216 +1,105 @@
-<!DOCTYPE html>
-<html lang="vi">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Dự đoán giá nhà – Bagging</title>
-  <style>
-    /* ── Reset & Variables ──────────────────────────────────── */
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    :root {
-      --bg:       #f0f4f8;
-      --card:     #ffffff;
-      --primary:  #2563eb;
-      --primary-d:#1d4ed8;
-      --accent:   #10b981;
-      --danger:   #ef4444;
-      --text:     #1e293b;
-      --muted:    #64748b;
-      --border:   #e2e8f0;
-      --shadow:   0 2px 12px rgba(0,0,0,.08);
-      --radius:   12px;
-    }
-    body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+{% extends "base.html" %}
 
-    /* ── Header ─────────────────────────────────────────────── */
-    header {
-      background: linear-gradient(135deg, #1e40af 0%, #2563eb 60%, #0ea5e9 100%);
-      color: #fff; padding: 2rem 0; text-align: center;
-      box-shadow: 0 4px 20px rgba(37,99,235,.35);
-    }
-    header h1 { font-size: 2rem; font-weight: 700; letter-spacing: -.5px; }
-    header p  { margin-top: .4rem; opacity: .85; font-size: .95rem; }
-    .badge {
-      display: inline-block; margin-top: .8rem;
-      background: rgba(255,255,255,.2); border: 1px solid rgba(255,255,255,.4);
-      border-radius: 20px; padding: .25rem .85rem; font-size: .8rem; font-weight: 600;
-    }
+{% block title %}Dự đoán giá nhà Việt Nam{% endblock %}
 
-    /* ── Layout ─────────────────────────────────────────────── */
-    main { max-width: 1200px; margin: 2rem auto; padding: 0 1.25rem; }
-    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
-    @media(max-width:768px) { .grid-2 { grid-template-columns: 1fr; } }
-
-    /* ── Card ───────────────────────────────────────────────── */
-    .card {
-      background: var(--card); border-radius: var(--radius);
-      box-shadow: var(--shadow); padding: 1.75rem; border: 1px solid var(--border);
-    }
-    .card h2 { font-size: 1.15rem; font-weight: 700; margin-bottom: 1.2rem;
-               display: flex; align-items: center; gap: .5rem; }
-    .card h2 .icon { font-size: 1.3rem; }
-
-    /* ── Form ───────────────────────────────────────────────── */
-    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: .9rem; }
-    @media(max-width:480px) { .form-grid { grid-template-columns: 1fr; } }
-    label { font-size: .82rem; font-weight: 600; color: var(--muted); display: block; margin-bottom: .3rem; }
-    input, select {
-      width: 100%; padding: .6rem .85rem; border: 1.5px solid var(--border);
-      border-radius: 8px; font-size: .95rem; outline: none; transition: border-color .2s;
-      background: #f8fafc; color: var(--text);
-    }
-    input:focus, select:focus { border-color: var(--primary); background: #fff; }
-    .form-group { display: flex; flex-direction: column; }
-    .form-group.full  { grid-column: 1/-1; }
-
-    .btn {
-      width: 100%; padding: .85rem; margin-top: 1rem;
-      background: var(--primary); color: #fff; font-size: 1rem; font-weight: 700;
-      border: none; border-radius: 10px; cursor: pointer; transition: background .2s, transform .1s;
-      letter-spacing: .2px;
-    }
-    .btn:hover  { background: var(--primary-d); }
-    .btn:active { transform: scale(.98); }
-    .btn:disabled { background: #94a3b8; cursor: not-allowed; }
-
-    /* ── Result Box ─────────────────────────────────────────── */
-    #result-box {
-      display: none; margin-top: 1.2rem;
-      background: linear-gradient(135deg, #ecfdf5, #d1fae5);
-      border: 1.5px solid #6ee7b7; border-radius: 10px; padding: 1.25rem; text-align: center;
-    }
-    #result-box.error {
-      background: #fef2f2; border-color: #fca5a5;
-    }
-    #result-price { font-size: 2rem; font-weight: 800; color: #059669; }
-    #result-price.error-text { color: var(--danger); font-size: 1rem; }
-    #result-ty    { font-size: 1.1rem; color: #065f46; margin-top: .15rem; font-weight: 600; }
-    #result-ci    { font-size: .82rem; color: var(--muted); margin-top: .5rem; }
-    .spinner { display: none; justify-content: center; margin-top: .8rem; }
-    .spinner.show { display: flex; }
-    .dot { width: 10px; height: 10px; background: var(--primary); border-radius: 50%; margin: 0 4px; animation: bounce .6s infinite alternate; }
-    .dot:nth-child(2) { animation-delay: .2s; }
-    .dot:nth-child(3) { animation-delay: .4s; }
-    @keyframes bounce { to { transform: translateY(-8px); opacity: .5; } }
-
-    /* ── Metrics Table ──────────────────────────────────────── */
-    .metrics-grid { display: grid; grid-template-columns: repeat(2,1fr); gap: .8rem; }
-    .metric-item {
-      background: #f8fafc; border: 1px solid var(--border); border-radius: 8px;
-      padding: .9rem; text-align: center;
-    }
-    .metric-label { font-size: .75rem; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: .5px; }
-    .metric-val   { font-size: 1.45rem; font-weight: 800; color: var(--primary); margin-top: .2rem; }
-    .metric-sub   { font-size: .75rem; color: var(--muted); }
-
-    /* ── Compare Table ──────────────────────────────────────── */
-    .compare-table { width: 100%; border-collapse: collapse; font-size: .88rem; }
-    .compare-table th {
-      background: #f1f5f9; font-size: .75rem; text-transform: uppercase;
-      letter-spacing: .5px; padding: .6rem .8rem; text-align: left;
-      border-bottom: 2px solid var(--border);
-    }
-    .compare-table td { padding: .6rem .8rem; border-bottom: 1px solid var(--border); }
-    .compare-table tr:last-child td { border-bottom: none; }
-    .compare-table tr.best td { background: #ecfdf5; font-weight: 700; }
-    .compare-table tr:hover td { background: #f8fafc; }
-    .tag {
-      display: inline-block; font-size: .7rem; font-weight: 700;
-      border-radius: 4px; padding: .15rem .45rem;
-    }
-    .tag-bag { background: #dbeafe; color: #1d4ed8; }
-    .tag-rf  { background: #d1fae5; color: #065f46; }
-    .tag-dt  { background: #fee2e2; color: #991b1b; }
-
-    /* ── Plots ──────────────────────────────────────────────── */
-    .plot-tabs { display: flex; flex-wrap: wrap; gap: .45rem; margin-bottom: 1rem; }
-    .plot-tab {
-      padding: .4rem .85rem; border-radius: 20px; font-size: .82rem; font-weight: 600;
-      border: 1.5px solid var(--border); cursor: pointer; background: #f8fafc; color: var(--muted); transition: all .15s;
-    }
-    .plot-tab.active { background: var(--primary); color: #fff; border-color: var(--primary); }
-    .plot-tab:hover:not(.active) { border-color: var(--primary); color: var(--primary); }
-    #plot-img { width: 100%; border-radius: 8px; border: 1px solid var(--border); display: block; }
-
-    /* ── About card ─────────────────────────────────────────── */
-    .formula {
-      background: #1e293b; color: #e2e8f0; border-radius: 8px;
-      padding: .85rem 1rem; font-family: 'Courier New', monospace; font-size: .83rem;
-      overflow-x: auto; margin: .75rem 0; line-height: 1.6;
-    }
-    .formula .kw  { color: #7dd3fc; }
-    .formula .val { color: #86efac; }
-    .formula .cmt { color: #64748b; }
-    .section-label { font-size: .75rem; font-weight: 700; text-transform: uppercase;
-                     letter-spacing: .8px; color: var(--muted); margin: 1rem 0 .4rem; }
-
-    /* ── Footer ─────────────────────────────────────────────── */
-    footer { text-align: center; padding: 2.5rem 1rem; color: var(--muted); font-size: .82rem; }
-
-    /* ── Alert banner ────────────────────────────────────────── */
-    .alert {
-      background: #fefce8; border: 1.5px solid #fde047; border-radius: 8px;
-      padding: .75rem 1rem; font-size: .88rem; color: #713f12; margin-bottom: 1rem;
-    }
-  </style>
-</head>
-<body>
-
-<!-- ── HEADER ──────────────────────────────────────────────────────────────── -->
-<header>
-  <h1>🏠 Dự đoán Giá Nhà Việt Nam</h1>
-  <p>Mô hình Bagging (Bootstrap Aggregating) – Ensemble Learning</p>
-  <span class="badge">scikit-learn · BaggingRegressor · DecisionTree</span>
-</header>
-
-<main>
-
-  {% if not model_loaded %}
-  <div class="alert">
-    ⚠️ Chưa tìm thấy mô hình. Chạy lệnh: <code>python bagging_train.py --data vietnam_house_raw.csv</code>
+{% block content %}
+<section class="hero-shell mb-4">
+  <div class="row g-4 align-items-center position-relative">
+    <div class="col-lg-7">
+      <span class="soft-pill mb-3">Bagging Regressor · Dự đoán giá nhà</span>
+      <h1 class="display-6 fw-bold mb-3">Dự đoán giá nhà Việt Nam bằng mô hình Bagging</h1>
+      <p class="lead mb-4 text-white-50">
+        Hệ thống ước lượng giá bất động sản dựa trên diện tích, vị trí, số phòng và loại nhà.
+        Giao diện này phục vụ demo cuối kỳ và trình bày kết quả học máy theo chuẩn báo cáo học thuật.
+      </p>
+      <div class="d-flex flex-wrap gap-2">
+        <span class="badge text-bg-light text-dark px-3 py-2">Decision Tree + Bootstrap Aggregating</span>
+        <span class="badge text-bg-info text-dark px-3 py-2">OOB score</span>
+        <span class="badge text-bg-success px-3 py-2">Bootstrap 5 UI</span>
+      </div>
+    </div>
+    <div class="col-lg-5">
+      <div class="glass-card p-4">
+        <div class="row g-3">
+          <div class="col-6">
+            <div class="metric-box" data-bs-toggle="tooltip" data-bs-placement="top"
+                 title="R² (Hệ số xác định): Tỷ lệ phương sai dữ liệu mà mô hình giải thích được. Giá trị từ 0 đến 1, càng gần 1 càng tốt.">
+              <div class="metric-label">Test R²</div>
+              <div class="metric-value">{{ "%.3f"|format(report_view.test_metrics.r2 if report_view.test_metrics else 0) }}</div>
+            </div>
+          </div>
+          <div class="col-6">
+            <div class="metric-box" data-bs-toggle="tooltip" data-bs-placement="top"
+                 title="MAE (Sai số tuyệt đối trung bình): Trung bình độ lệch tuyệt đối giữa giá dự đoán và giá thực tế. Đơn vị: triệu VND.">
+              <div class="metric-label">Test MAE</div>
+              <div class="metric-value">{{ "{:,.0f}".format(report_view.test_metrics.mae if report_view.test_metrics else 0) }} <span style="font-size:.9rem;font-weight:600;color:#64748b;">triệu</span></div>
+            </div>
+          </div>
+          <div class="col-6">
+            <div class="metric-box" data-bs-toggle="tooltip" data-bs-placement="top"
+                 title="CV MAE: Sai số trung bình tuyệt đối được tính qua kiểm chứng chéo 5-fold. Đánh giá khả năng tổng quát hoá của mô hình. Đơn vị: triệu VND.">
+              <div class="metric-label">CV MAE</div>
+              <div class="metric-value">{{ "{:,.0f}".format(report_view.cv_metrics.mae if report_view.cv_metrics else 0) }} <span style="font-size:.9rem;font-weight:600;color:#64748b;">triệu</span></div>
+            </div>
+          </div>
+          <div class="col-6">
+            <div class="metric-box" data-bs-toggle="tooltip" data-bs-placement="top"
+                 title="OOB R² (Out-of-Bag Score): Ước lượng R² trên các mẫu không được chọn trong bootstrap. Là thước đo tổng quát hoá đặc trưng của Bagging, không cần tập validation riêng.">
+              <div class="metric-label">OOB R²</div>
+              <div class="metric-value">{{ "%.3f"|format(report_view.oob_score or 0) }}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
-  {% endif %}
+</section>
 
-  <!-- ── ROW 1: Form + Metrics ──────────────────────────────────────────── -->
-  <div class="grid-2" style="margin-bottom:1.5rem">
+<section class="row g-4">
+  <div class="col-lg-7">
+    <div class="glass-card p-4 h-100">
+      <h2 class="section-title h4 mb-4">Nhập thông tin căn nhà</h2>
 
-    <!-- Prediction Form -->
-    <div class="card">
-      <h2><span class="icon">🔍</span> Nhập thông tin căn nhà</h2>
+      {% if not model_loaded %}
+      <div class="alert alert-warning mb-4">
+        Chưa tìm thấy mô hình. Hãy chạy huấn luyện trước khi dự đoán.
+      </div>
+      {% endif %}
+
       <form id="predict-form" autocomplete="off">
-        <div class="form-grid">
-          <div class="form-group">
-            <label>Diện tích (m²) *</label>
-            <input type="number" id="area" placeholder="VD: 80" min="10" max="2000" required value="80" />
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label class="form-label fw-semibold">Diện tích (m²) *</label>
+            <input type="number" class="form-control form-control-lg" id="area" min="10" max="2000" value="80" required>
           </div>
-          <div class="form-group">
-            <label>Thành phố *</label>
-            <select id="city" required></select>
+          <div class="col-md-6">
+            <label class="form-label fw-semibold">Thành phố *</label>
+            <select class="form-select form-select-lg" id="city" required></select>
           </div>
-          <div class="form-group">
-            <label>Phường / Quận *</label>
-            <select id="ward" required></select>
+          <div class="col-md-6">
+            <label class="form-label fw-semibold">Phường / Quận *</label>
+            <select class="form-select form-select-lg" id="ward" required></select>
           </div>
-          <div class="form-group">
-            <label>Đường *</label>
-            <select id="street" required></select>
+          <div class="col-md-6">
+            <label class="form-label fw-semibold">Đường *</label>
+            <select class="form-select form-select-lg" id="street" required></select>
           </div>
-          <input type="hidden" id="district" value="q7" />
-          <div class="form-group">
-            <label>Phòng ngủ</label>
-            <input type="number" id="bedrooms" placeholder="VD: 3" min="0" max="20" value="3" />
+          <input type="hidden" id="district" value="q7">
+          <div class="col-md-6">
+            <label class="form-label fw-semibold">Phòng ngủ</label>
+            <input type="number" class="form-control" id="bedrooms" min="0" max="20" value="3">
           </div>
-          <div class="form-group">
-            <label>Phòng tắm</label>
-            <input type="number" id="bathrooms" placeholder="VD: 2" min="0" max="20" value="2" />
+          <div class="col-md-6">
+            <label class="form-label fw-semibold">Phòng tắm</label>
+            <input type="number" class="form-control" id="bathrooms" min="0" max="20" value="2">
           </div>
-          <div class="form-group">
-            <label>Số tầng</label>
-            <input type="number" id="floors" placeholder="VD: 4" min="0" max="50" value="4" />
+          <div class="col-md-6">
+            <label class="form-label fw-semibold">Số tầng</label>
+            <input type="number" class="form-control" id="floors" min="0" max="50" value="4">
           </div>
-          <div class="form-group">
-            <label>Loại nhà</label>
-            <select id="house_type">
+          <div class="col-md-6">
+            <label class="form-label fw-semibold">Loại nhà</label>
+            <select class="form-select" id="house_type">
               <option value="nhà phố" selected>Nhà phố</option>
               <option value="căn hộ">Căn hộ / Chung cư</option>
               <option value="biệt thự">Biệt thự</option>
@@ -219,219 +108,90 @@
               <option value="nhà trọ / phòng">Nhà trọ / Phòng</option>
             </select>
           </div>
+          <div class="col-12">
+            <button type="submit" class="btn btn-lg btn-dark w-100 fw-bold" id="predict-btn">Dự đoán ngay</button>
+          </div>
         </div>
-        <button type="submit" class="btn" id="predict-btn">⚡ Dự đoán ngay</button>
       </form>
 
-      <!-- Spinner -->
-      <div class="spinner" id="spinner">
-        <div class="dot"></div><div class="dot"></div><div class="dot"></div>
+      <div class="d-flex justify-content-center mt-3 d-none" id="spinner">
+        <div class="spinner-border text-primary" role="status"></div>
       </div>
 
-      <!-- Result -->
-      <div id="result-box">
-        <div style="font-size:.82rem;color:#065f46;font-weight:600;margin-bottom:.4rem">💰 Giá ước tính</div>
-        <div id="result-price"></div>
-        <div id="result-ty"></div>
-        <div id="result-ci"></div>
+      <div class="alert alert-success mt-4 d-none" id="result-box">
+        <div class="small text-uppercase fw-bold text-success-emphasis mb-1">Giá ước tính</div>
+        <div class="display-6 fw-bold mb-1" id="result-price"></div>
+        <div class="fw-semibold" id="result-ty"></div>
+        <div class="text-secondary small mt-2" id="result-ci"></div>
       </div>
-    </div>
-
-    <!-- Metrics -->
-    <div class="card">
-      <h2><span class="icon">📊</span> Kết quả đánh giá mô hình</h2>
-
-      {% if report %}
-      {% set tm = report.get('test_metrics', {}) %}
-      <div class="metrics-grid">
-        <div class="metric-item">
-          <div class="metric-label">Test MAE</div>
-          <div class="metric-val">{{ "{:,.0f}".format(tm.get('mae', 0)) }}</div>
-          <div class="metric-sub">triệu VND</div>
-        </div>
-        <div class="metric-item">
-          <div class="metric-label">Test R²</div>
-          <div class="metric-val">{{ "%.3f"|format(tm.get('r2', 0)) }}</div>
-          <div class="metric-sub">0 → 1 (cao hơn = tốt hơn)</div>
-        </div>
-        <div class="metric-item">
-          <div class="metric-label">OOB R²</div>
-          <div class="metric-val">{{ "%.3f"|format(report.get('oob_r2', 0)) }}</div>
-          <div class="metric-sub">Out-of-Bag score</div>
-        </div>
-        <div class="metric-item">
-          <div class="metric-label">Giảm Variance</div>
-          <div class="metric-val">{{ report.get('variance_reduction_pct', 0) }}%</div>
-          <div class="metric-sub">so với cây đơn lẻ</div>
-        </div>
-      </div>
-
-      <div class="section-label" style="margin-top:1.2rem">Chi tiết 5-fold Cross-Validation</div>
-      <div style="font-size:.88rem;color:var(--muted);line-height:1.9">
-        CV MAE: <strong style="color:var(--text)">{{ "{:,.0f}".format(report.get('cv_mae_mean',0)) }} ± {{ "{:,.0f}".format(report.get('cv_mae_std',0)) }}</strong> triệu VND<br>
-        CV R²: <strong style="color:var(--text)">{{ "%.4f"|format(report.get('cv_r2_mean',0)) }} ± {{ "%.4f"|format(report.get('cv_r2_std',0)) }}</strong><br>
-        Tập train: <strong style="color:var(--text)">{{ report.get('n_train',0) }}</strong> mẫu &nbsp;|&nbsp;
-        Tập test: <strong style="color:var(--text)">{{ report.get('n_test',0) }}</strong> mẫu<br>
-        Số cây (B): <strong style="color:var(--text)">{{ report.get('n_estimators',0) }}</strong>
-      </div>
-      {% else %}
-      <p style="color:var(--muted);font-size:.9rem">Chưa có báo cáo. Hãy chạy lệnh train.</p>
-      {% endif %}
     </div>
   </div>
 
-  <!-- ── ROW 2: Compare Table + Plots ───────────────────────────────────── -->
-  <div class="grid-2" style="margin-bottom:1.5rem">
+  <div class="col-lg-5">
+    <div class="glass-card p-4 mb-4">
+      <h2 class="section-title h4 mb-3">Thông tin mô hình</h2>
+      <div class="row g-3">
+        <div class="col-6">
+          <div class="metric-box">
+            <div class="metric-label">Số cây</div>
+            <div class="metric-value">{{ report_view.n_estimators or 0 }}</div>
+          </div>
+        </div>
+        <div class="col-6">
+          <div class="metric-box">
+            <div class="metric-label">Tập train</div>
+            <div class="metric-value">{{ report_view.n_train or 0 }}</div>
+          </div>
+        </div>
+        <div class="col-12">
+          <p class="section-subtitle mb-0">
+            Mô hình Bagging dùng cây quyết định làm base learner, kết hợp bootstrap sampling để giảm phương sai và tăng độ ổn định dự đoán.
+          </p>
+        </div>
+      </div>
+    </div>
 
-    <!-- Comparison Table -->
-    <div class="card">
-      <h2><span class="icon">⚖️</span> So sánh các mô hình (5-fold CV)</h2>
-      {% if report and report.get('compare') %}
-      <div style="overflow-x:auto">
-        <table class="compare-table">
+    <div class="glass-card p-4">
+      <h2 class="section-title h4 mb-3">So sánh mô hình</h2>
+      {% if report_view.compare_rows %}
+      <div class="table-responsive">
+        <table class="table align-middle mb-0">
           <thead>
             <tr>
               <th>Mô hình</th>
-              <th>CV MAE ↓</th>
-              <th>±</th>
-              <th>CV R² ↑</th>
+              <th>CV MAE</th>
+              <th>CV R²</th>
             </tr>
           </thead>
           <tbody>
-            {% set cmp = report['compare'] %}
-            {% set best_mae = cmp.values()|map(attribute='cv_mae')|min %}
-            {% for name, v in cmp.items() %}
-            <tr {% if v.cv_mae == best_mae %}class="best"{% endif %}>
-              <td>
-                {% if 'RandomForest' in name %}
-                  <span class="tag tag-rf">RF</span>
-                {% elif 'DecisionTree' in name %}
-                  <span class="tag tag-dt">DT</span>
-                {% else %}
-                  <span class="tag tag-bag">BAG</span>
-                {% endif %}
-                {{ name }}
-                {% if v.cv_mae == best_mae %} 🏆{% endif %}
-              </td>
-              <td>{{ "{:,.0f}".format(v.cv_mae) }}</td>
-              <td style="color:var(--muted)">{{ "{:,.0f}".format(v.cv_mae_std) }}</td>
-              <td>{{ "%.4f"|format(v.cv_r2) }}</td>
+            {% for row in report_view.compare_rows %}
+            <tr>
+              <td>{{ row.name }}</td>
+              <td>{{ "{:,.0f}".format(row.cv_mae) }}</td>
+              <td>{{ "%.4f"|format(row.cv_r2) }}</td>
             </tr>
             {% endfor %}
           </tbody>
         </table>
       </div>
-      <p style="font-size:.78rem;color:var(--muted);margin-top:.8rem">
-        MAE đơn vị: triệu VND. Hàng xanh = MAE thấp nhất.
-      </p>
       {% else %}
-      <p style="color:var(--muted);font-size:.9rem">Chưa có dữ liệu so sánh. Chạy với flag <code>--compare</code>.</p>
-      {% endif %}
-    </div>
-
-    <!-- Plots Viewer -->
-    <div class="card">
-      <h2><span class="icon">🖼️</span> Biểu đồ đánh giá</h2>
-      {% if plot_files %}
-      {% set plot_labels = {
-        '1_prediction_vs_actual.png': 'Pred vs Actual',
-        '2_residuals.png': 'Residuals',
-        '3_model_comparison.png': 'So sánh',
-        '4_learning_curve.png': 'Learning Curve',
-        '5_feature_importance.png': 'Feature Importance'
-      } %}
-      <div class="plot-tabs" id="plot-tabs">
-        {% for f in plot_files %}
-        <button class="plot-tab {% if loop.first %}active{% endif %}"
-                onclick="showPlot(this, '{{ f }}')">
-          {{ plot_labels.get(f, f) }}
-        </button>
-        {% endfor %}
-      </div>
-      <img id="plot-img" src="/plots/{{ plot_files[0] }}" alt="Biểu đồ" />
-      {% else %}
-      <p style="color:var(--muted);font-size:.9rem">Chưa có biểu đồ. Chạy với flag <code>--plot</code>.</p>
+      <p class="section-subtitle mb-0">Chưa có dữ liệu so sánh. Hãy chạy huấn luyện với cờ <strong>--compare</strong>.</p>
       {% endif %}
     </div>
   </div>
+</section>
+{% endblock %}
 
-  <!-- ── ROW 3: Theory ──────────────────────────────────────────────────── -->
-  <div class="card" style="margin-bottom:1.5rem">
-    <h2><span class="icon">📚</span> Lý thuyết Bagging (Bootstrap Aggregating)</h2>
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:1.5rem">
-
-      <div>
-        <div class="section-label">Thuật toán</div>
-        <div class="formula">
-<span class="kw">for</span> b = 1 <span class="kw">to</span> <span class="val">B</span>:
-  D_b = <span class="val">bootstrap_sample</span>(D, n)  <span class="cmt"># lấy mẫu có hoàn lại</span>
-  f_b = <span class="val">train</span>(DecisionTree, D_b)
-
-<span class="cmt"># Dự đoán (regression = trung bình)</span>
-ŷ = (1/B) × Σ f_b(x)
-        </div>
-        <p style="font-size:.85rem;color:var(--muted);line-height:1.7">
-          Mỗi lần <strong>bootstrap</strong>: lấy ngẫu nhiên có hoàn lại → ~63.2% mẫu duy nhất.
-          ~36.8% còn lại gọi là <strong>Out-of-Bag (OOB)</strong> — dùng để đánh giá mô hình miễn phí.
-        </p>
-      </div>
-
-      <div>
-        <div class="section-label">Tại sao Bagging giảm Variance?</div>
-        <div class="formula">
-Var(ensemble) = σ²/B × [1 + (B−1)·ρ]
-
-  σ² : variance của 1 cây đơn lẻ
-  ρ  : tương quan trung bình giữa các cây
-  B  : số cây
-
-Khi B → ∞: Var → ρ·σ²  (giới hạn dưới)
-        </div>
-        <p style="font-size:.85rem;color:var(--muted);line-height:1.7">
-          <strong>Random Forest</strong> cải tiến thêm: giới hạn đặc trưng tại mỗi split
-          → giảm ρ → variance thấp hơn Bagging thuần.
-        </p>
-      </div>
-
-      <div>
-        <div class="section-label">Pipeline mô hình</div>
-        <div class="formula">
-Input CSV
-  └─▶ <span class="kw">ColumnTransformer</span>
-       ├─ <span class="val">NumericFeatures</span>
-       │   ├─ SimpleImputer(median)
-       │   └─ StandardScaler
-       └─ <span class="val">CatFeatures</span>
-           ├─ SimpleImputer(constant)
-           └─ OneHotEncoder
-  └─▶ <span class="kw">BaggingRegressor</span>
-       └─ base: DecisionTree(depth=10)
-        </div>
-        <p style="font-size:.85rem;color:var(--muted);line-height:1.7">
-          Đặc trưng: <code>area_m2</code>, <code>bedrooms</code>, <code>bathrooms</code>,
-          <code>floors</code>, <code>district</code> (OHE), <code>house_type</code> (OHE).
-        </p>
-      </div>
-
-    </div>
-  </div>
-
-</main>
-
-<footer>
-  Bagging Regression Demo &nbsp;·&nbsp; scikit-learn BaggingRegressor &nbsp;·&nbsp; TP.HCM House Price Dataset
-</footer>
-
-<!-- ── JavaScript ─────────────────────────────────────────────────────────── -->
+{% block scripts %}
 <script>
   const locationTree = {{ (location_tree or {}) | tojson }};
 
-  function fillSelect(selectEl, items, valueGetter, labelGetter) {
+  function fillSelect(selectEl, items) {
     selectEl.innerHTML = '';
-    items.forEach((item, idx) => {
+    items.forEach((item) => {
       const opt = document.createElement('option');
-      opt.value = valueGetter(item, idx);
-      opt.textContent = labelGetter(item, idx);
+      opt.value = item;
+      opt.textContent = item;
       selectEl.appendChild(opt);
     });
   }
@@ -442,128 +202,105 @@ Input CSV
     const streetEl = document.getElementById('street');
     const districtEl = document.getElementById('district');
 
-    const refreshCities = () => {
-      const cities = Object.keys(locationTree);
-      if (!cities.length) {
-        fillSelect(cityEl, ['Khac'], (c) => c, (c) => c);
-      } else {
-        fillSelect(cityEl, cities, (c) => c, (c) => c);
-      }
-      refreshWards();
-    };
-
-    const refreshWards = () => {
-      const cityKey = cityEl.value;
-      const wardsObj = locationTree[cityKey] || {};
-      const wards = Object.keys(wardsObj);
-
-      if (!wards.length) {
-        fillSelect(wardEl, ['Khong ro'], (w) => w, (w) => w);
-      } else {
-        fillSelect(wardEl, wards, (w) => w, (w) => w);
-      }
-
-      refreshStreets();
-    };
-
     const refreshStreets = () => {
       const cityKey = cityEl.value;
       const wardKey = wardEl.value;
       const wardNode = (((locationTree[cityKey] || {})[wardKey]) || {});
-
-      const streets = wardNode.streets || [];
-      if (!streets.length) {
-        fillSelect(streetEl, ['Khong ro'], (s) => s, (s) => s);
-      } else {
-        fillSelect(streetEl, streets, (s) => s, (s) => s);
-      }
-
+      const streets = wardNode.streets || ['Không rõ'];
+      fillSelect(streetEl, streets);
       districtEl.value = wardNode.district || 'unknown';
     };
 
+    const refreshWards = () => {
+      const cityKey = cityEl.value;
+      const wards = Object.keys(locationTree[cityKey] || {});
+      fillSelect(wardEl, wards.length ? wards : ['Không rõ']);
+      refreshStreets();
+    };
+
+    const cities = Object.keys(locationTree);
+    fillSelect(cityEl, cities.length ? cities : ['Khác']);
+    refreshWards();
+
     cityEl.addEventListener('change', refreshWards);
     wardEl.addEventListener('change', refreshStreets);
-
-    refreshCities();
   }
 
-  // ── Plot switcher ─────────────────────────────────────────────────────────
-  function showPlot(btn, filename) {
-    document.querySelectorAll('.plot-tab').forEach(t => t.classList.remove('active'));
-    btn.classList.add('active');
-    document.getElementById('plot-img').src = '/plots/' + filename;
-  }
-
-  // ── Prediction form ───────────────────────────────────────────────────────
   document.getElementById('predict-form').addEventListener('submit', async (e) => {
     e.preventDefault();
 
-    const btn     = document.getElementById('predict-btn');
+    const btn = document.getElementById('predict-btn');
     const spinner = document.getElementById('spinner');
-    const box     = document.getElementById('result-box');
+    const box = document.getElementById('result-box');
     const priceEl = document.getElementById('result-price');
-    const tyEl    = document.getElementById('result-ty');
-    const ciEl    = document.getElementById('result-ci');
+    const tyEl = document.getElementById('result-ty');
+    const ciEl = document.getElementById('result-ci');
 
     btn.disabled = true;
-    spinner.classList.add('show');
-    box.style.display = 'none';
-    box.classList.remove('error');
-    priceEl.classList.remove('error-text');
+    spinner.classList.remove('d-none');
+    box.classList.add('d-none');
 
     const payload = {
-      area:       parseFloat(document.getElementById('area').value),
-      district:   document.getElementById('district').value,
-      city:       document.getElementById('city').value,
-      ward:       document.getElementById('ward').value,
-      street:     document.getElementById('street').value,
-      bedrooms:   document.getElementById('bedrooms').value || null,
-      bathrooms:  document.getElementById('bathrooms').value || null,
-      floors:     document.getElementById('floors').value || null,
+      area: parseFloat(document.getElementById('area').value),
+      district: document.getElementById('district').value,
+      city: document.getElementById('city').value,
+      ward: document.getElementById('ward').value,
+      street: document.getElementById('street').value,
+      bedrooms: document.getElementById('bedrooms').value || null,
+      bathrooms: document.getElementById('bathrooms').value || null,
+      floors: document.getElementById('floors').value || null,
       house_type: document.getElementById('house_type').value,
     };
 
     try {
-      const res  = await fetch('/predict', {
-        method:  'POST',
+      const res = await fetch('/predict', {
+        method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify(payload),
+        body: JSON.stringify(payload),
       });
       const data = await res.json();
 
-      spinner.classList.remove('show');
-      box.style.display = 'block';
+      spinner.classList.add('d-none');
+      box.classList.remove('d-none');
 
       if (data.error) {
-        box.classList.add('error');
-        priceEl.classList.add('error-text');
-        priceEl.textContent = '⚠️ ' + data.error;
-        tyEl.textContent    = '';
-        ciEl.textContent    = '';
+        box.classList.remove('alert-success');
+        box.classList.add('alert-danger');
+        priceEl.textContent = data.error;
+        tyEl.textContent = '';
+        ciEl.textContent = '';
       } else {
-        const fmt = v => new Intl.NumberFormat('vi-VN').format(v);
+        const fmt = new Intl.NumberFormat('vi-VN');
         const priceVnd = Number(data.price) * 1_000_000;
         const lowVnd = Number(data.ci_low) * 1_000_000;
         const highVnd = Number(data.ci_high) * 1_000_000;
 
-        priceEl.textContent = fmt(priceVnd) + ' vnđ';
-        tyEl.textContent    = '≈ ' + data.ty.toFixed(3) + ' tỷ VND';
-        ciEl.textContent    = `Khoảng tin cậy 80%: ${fmt(lowVnd)} – ${fmt(highVnd)} vnđ`;
+        box.classList.remove('alert-danger');
+        box.classList.add('alert-success');
+        priceEl.textContent = fmt.format(priceVnd) + ' VNĐ';
+        tyEl.textContent = '≈ ' + data.ty.toFixed(3) + ' tỷ VND';
+        ciEl.textContent = `Khoảng tin cậy 80%: ${fmt.format(lowVnd)} - ${fmt.format(highVnd)} VNĐ`;
       }
-    } catch(err) {
-      spinner.classList.remove('show');
-      box.style.display = 'block';
-      box.classList.add('error');
-      priceEl.classList.add('error-text');
-      priceEl.textContent = '⚠️ Lỗi kết nối: ' + err.message;
-      tyEl.textContent = ''; ciEl.textContent = '';
+    } catch (err) {
+      spinner.classList.add('d-none');
+      box.classList.remove('alert-success');
+      box.classList.add('alert-danger');
+      box.classList.remove('d-none');
+      priceEl.textContent = 'Lỗi kết nối: ' + err.message;
+      tyEl.textContent = '';
+      ciEl.textContent = '';
     }
 
     btn.disabled = false;
   });
 
   setupLocationSelectors();
-</script>
 
-</body>
-</html>
+  // Khởi tạo Bootstrap tooltips
+  document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => {
+      new bootstrap.Tooltip(el, { html: false });
+    });
+  });
+</script>
+{% endblock %}

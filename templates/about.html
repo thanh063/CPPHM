@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+
+{% block title %}Giới thiệu | Dự đoán giá nhà Việt Nam{% endblock %}
+
+{% block content %}
+<div class="hero-shell mb-4">
+  <span class="soft-pill mb-3">Giới thiệu đề tài</span>
+  <h1 class="display-6 fw-bold mb-3">Bagging cho bài toán dự đoán giá nhà</h1>
+  <p class="lead text-white-50 mb-0">
+    Bagging (Bootstrap Aggregating) huấn luyện nhiều mô hình cơ sở trên các mẫu bootstrap khác nhau,
+    sau đó lấy trung bình dự đoán. Cách tiếp cận này đặc biệt phù hợp với cây quyết định vì giúp giảm phương sai.
+  </p>
+</div>
+
+<div class="row g-4">
+  <div class="col-lg-6">
+    <div class="glass-card p-4 h-100">
+      <h2 class="section-title h4 mb-3">Thông tin nhóm</h2>
+      <div class="table-responsive">
+        <table class="table align-middle mb-0">
+          <tbody>
+            <tr><th class="text-nowrap">Tên nhóm</th><td>[Điền tên nhóm]</td></tr>
+            <tr><th class="text-nowrap">Thành viên 1</th><td>[Họ tên - MSSV - Lớp]</td></tr>
+            <tr><th class="text-nowrap">Thành viên 2</th><td>[Họ tên - MSSV - Lớp]</td></tr>
+            <tr><th class="text-nowrap">Thành viên 3</th><td>[Họ tên - MSSV - Lớp]</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="section-subtitle mt-3 mb-0">Nếu bạn đã có danh sách thành viên thật, thay trực tiếp các placeholder này trước khi nộp báo cáo.</p>
+    </div>
+  </div>
+
+  <div class="col-lg-6">
+    <div class="glass-card p-4 h-100">
+      <h2 class="section-title h4 mb-3">Tại sao chọn Bagging?</h2>
+      <ul class="mb-0 ps-3">
+        <li class="mb-2">Cây quyết định dễ overfit và có phương sai cao.</li>
+        <li class="mb-2">Bagging giúp giảm dao động giữa các cây bằng cách lấy trung bình dự đoán.</li>
+        <li class="mb-2">OOB score cho phép đánh giá nội bộ mà không cần tách thêm validation set.</li>
+        <li>Phù hợp với dữ liệu bất động sản có phân phối rộng và nhiều nhiễu.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="col-12">
+    <div class="glass-card p-4">
+      <h2 class="section-title h4 mb-3">Quy trình Bagging</h2>
+      <div class="row g-3 text-center">
+        <div class="col-md-4">
+          <div class="metric-box h-100">
+            <div class="metric-label">Bước 1</div>
+            <div class="metric-value mb-2">Bootstrap</div>
+            <p class="section-subtitle mb-0">Lấy mẫu có hoàn lại từ tập dữ liệu gốc để tạo nhiều tập huấn luyện khác nhau.</p>
+          </div>
+        </div>
+        <div class="col-md-4">
+          <div class="metric-box h-100">
+            <div class="metric-label">Bước 2</div>
+            <div class="metric-value mb-2">Huấn luyện</div>
+            <p class="section-subtitle mb-0">Huấn luyện từng cây quyết định trên từng bootstrap sample độc lập.</p>
+          </div>
+        </div>
+        <div class="col-md-4">
+          <div class="metric-box h-100">
+            <div class="metric-label">Bước 3</div>
+            <div class="metric-value mb-2">Trung bình</div>
+            <p class="section-subtitle mb-0">Lấy trung bình dự đoán để giảm variance và tăng độ ổn định.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

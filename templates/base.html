@@ -1,0 +1,261 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Dự đoán giá nhà Việt Nam{% endblock %}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    :root {
+      --bg-start: #081120;
+      --bg-end: #0f1f3a;
+      --card: rgba(255, 255, 255, 0.92);
+      --card-border: rgba(148, 163, 184, 0.22);
+      --brand: #2dd4bf;
+      --brand-strong: #14b8a6;
+      --ink: #0f172a;
+      --muted: #64748b;
+      --accent: #2563eb;
+    }
+
+    body {
+      font-family: 'Outfit', sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at top left, rgba(45, 212, 191, 0.2), transparent 30%),
+        radial-gradient(circle at top right, rgba(37, 99, 235, 0.18), transparent 25%),
+        linear-gradient(180deg, #eef4ff 0%, #f6f8fc 35%, #edf2f7 100%);
+      min-height: 100vh;
+    }
+
+    .app-navbar {
+      backdrop-filter: blur(16px);
+      background: rgba(8, 17, 32, 0.88);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .app-navbar .navbar-brand,
+    .app-navbar .nav-link {
+      color: rgba(255, 255, 255, 0.9) !important;
+    }
+
+    .app-navbar .nav-link.active,
+    .app-navbar .nav-link:hover {
+      color: #ffffff !important;
+    }
+
+    .hero-shell {
+      background: linear-gradient(135deg, rgba(8, 17, 32, 0.98), rgba(15, 31, 58, 0.92));
+      color: #f8fafc;
+      border-radius: 28px;
+      padding: 2.25rem;
+      box-shadow: 0 24px 70px rgba(8, 15, 28, 0.28);
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* animated gradient border on the left */
+    .hero-shell::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 6px;
+      border-top-left-radius: 28px;
+      border-bottom-left-radius: 28px;
+      background: linear-gradient(180deg, var(--brand) 0%, var(--brand-strong) 50%, #06b6d4 100%);
+      background-size: 100% 200%;
+      animation: gradient-vert 3.2s linear infinite;
+      box-shadow: 0 8px 20px rgba(20,184,166,0.08);
+      pointer-events: none;
+      z-index: 2;
+    }
+
+    .hero-shell::after {
+      content: '';
+      position: absolute;
+      inset: auto -8rem -8rem auto;
+      width: 16rem;
+      height: 16rem;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(45, 212, 191, 0.35), transparent 72%);
+      pointer-events: none;
+    }
+
+    .glass-card {
+      background: rgba(255, 255, 255, 0.84);
+      -webkit-backdrop-filter: blur(8px);
+      backdrop-filter: blur(8px);
+      border: 1px solid rgba(148, 163, 184, 0.10);
+      box-shadow: 0 18px 45px rgba(15, 23, 42, 0.06);
+      border-radius: 24px;
+    }
+
+    .soft-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: .45rem;
+      padding: .45rem .8rem;
+      border-radius: 999px;
+      font-size: .82rem;
+      font-weight: 700;
+      background: rgba(45, 212, 191, 0.13);
+      color: #0f766e;
+    }
+
+    .metric-box {
+      border-radius: 18px;
+      background: linear-gradient(180deg, rgba(255,255,255,.95), rgba(241,245,249,.95));
+      border: 1px solid rgba(148, 163, 184, 0.12);
+      padding: 1rem 1.1rem;
+      height: 100%;
+      transition: transform 200ms ease, box-shadow 200ms ease;
+      transform-origin: center center;
+    }
+
+    .metric-box:hover {
+      transform: scale(1.02);
+      box-shadow: 0 18px 40px rgba(15, 23, 42, 0.08);
+    }
+
+    .metric-value {
+      font-size: 1.6rem;
+      font-weight: 800;
+      color: #0f172a;
+      line-height: 1.05;
+    }
+
+    .metric-label {
+      color: var(--muted);
+      font-size: .82rem;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      margin-bottom: .25rem;
+      font-weight: 700;
+    }
+
+    .page-section {
+      padding: 2rem 0 3rem;
+    }
+
+    .section-title {
+      font-weight: 800;
+      color: #0f172a;
+      letter-spacing: -0.02em;
+    }
+
+    .section-subtitle {
+      color: var(--muted);
+    }
+
+    .table thead th {
+      background: #eff6ff;
+      border-bottom: 1px solid #dbeafe;
+      color: #0f172a;
+    }
+
+    .plot-frame {
+      border-radius: 20px;
+      overflow: hidden;
+      border: 1px solid rgba(148, 163, 184, 0.22);
+      background: #ffffff;
+      box-shadow: 0 14px 32px rgba(15, 23, 42, 0.08);
+    }
+
+    /* Inputs focus: teal glow */
+    input:focus, textarea:focus, select:focus, .form-control:focus {
+      border-color: var(--brand) !important;
+      box-shadow: 0 6px 20px rgba(45,212,191,0.12), 0 0 0 4px rgba(45,212,191,0.06) !important;
+      outline: none !important;
+      transition: box-shadow 180ms ease, border-color 180ms ease;
+    }
+
+    /* Submit button shimmer on hover (non-intrusive) */
+    button[type="submit"], .btn[type="submit"] {
+      position: relative;
+      overflow: hidden;
+      z-index: 0;
+    }
+
+    button[type="submit"]::after, .btn[type="submit"]::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -75%;
+      height: 100%;
+      width: 50%;
+      background: linear-gradient(90deg, rgba(255,255,255,0), rgba(255,255,255,0.36), rgba(255,255,255,0));
+      transform: skewX(-18deg);
+      transition: none;
+      pointer-events: none;
+      opacity: 0;
+    }
+
+    button[type="submit"]:hover::after, .btn[type="submit"]:hover::after {
+      animation: shimmer 900ms ease-in-out forwards;
+      opacity: 1;
+    }
+
+    @keyframes shimmer {
+      0% { left: -75%; opacity: 0; }
+      10% { opacity: 1; }
+      100% { left: 125%; opacity: 0; }
+    }
+
+    @keyframes gradient-vert {
+      0% { background-position: 0% 0%; }
+      50% { background-position: 0% 100%; }
+      100% { background-position: 0% 0%; }
+    }
+
+    .plot-frame img {
+      display: block;
+      width: 100%;
+      height: auto;
+    }
+
+    footer {
+      color: var(--muted);
+      padding: 1.25rem 0 2rem;
+      text-align: center;
+    }
+  </style>
+  {% block head %}{% endblock %}
+</head>
+<body>
+  <nav class="navbar navbar-expand-lg navbar-dark app-navbar sticky-top">
+    <div class="container">
+      <a class="navbar-brand fw-bold" href="/">House Bagging</a>
+      <button class="navbar-toggler text-white border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse" id="navbarNav">
+        <ul class="navbar-nav ms-auto align-items-lg-center gap-lg-1">
+          <li class="nav-item"><a class="nav-link {% if request.path == '/' %}active{% endif %}" href="/">Trang chủ</a></li>
+          <li class="nav-item"><a class="nav-link {% if request.path == '/about' %}active{% endif %}" href="/about">Giới thiệu</a></li>
+          <li class="nav-item"><a class="nav-link {% if request.path == '/analysis' %}active{% endif %}" href="/analysis">Phân tích</a></li>
+          <li class="nav-item"><a class="nav-link {% if request.path == '/region' %}active{% endif %}" href="/region">Theo tỉnh</a></li>
+          <li class="nav-item"><a class="nav-link {% if request.path == '/report' %}active{% endif %}" href="/report">Báo cáo</a></li>
+        </ul>
+      </div>
+    </div>
+  </nav>
+
+  <main class="page-section">
+    <div class="container">
+      {% block content %}{% endblock %}
+    </div>
+  </main>
+
+  <footer>
+    Dự đoán giá nhà Việt Nam bằng Bagging · Flask · Bootstrap 5 · scikit-learn
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

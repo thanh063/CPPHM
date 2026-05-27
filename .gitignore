@@ -1,0 +1,51 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+*.egg
+
+# ML model & data
+*.joblib
+*.pkl
+*.h5
+
+# Crawl driver
+msedgedriver.exe
+chromedriver.exe
+geckodriver.exe
+
+# Generated plots & reports
+plots/
+evaluation_report.json
+
+# Data files (không commit data thô)
+vietnam_house_raw.csv
+vietnam_house_clean.csv
+vietnam_house_synthetic.csv
+vietnam_house_test_bds.csv
+
+# Pytest / Coverage
+.pytest_cache/
+.coverage
+htmlcov/
+coverage.xml
+
+# Env / IDE
+.env
+.venv
+venv/
+env/
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini

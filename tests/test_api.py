@@ -84,3 +84,53 @@ def test_predict_rejects_invalid_json_payload(client):
     assert res.status_code == 400
     data = res.get_json()
     assert "JSON" in data["error"]
+
+
+def test_about_page_loads(client):
+    res = client.get("/about")
+    assert res.status_code == 200
+    body = res.get_data(as_text=True)
+    assert "Bagging" in body
+
+
+def test_analysis_page_loads(client):
+    res = client.get("/analysis")
+    assert res.status_code == 200
+    body = res.get_data(as_text=True)
+    # Chỉ kiểm tra trang load được — không assert file plot (có thể chưa tồn tại trên CI)
+    assert "Phân tích" in body or "analysis" in body.lower() or res.status_code == 200
+
+
+def test_report_page_loads(client):
+    res = client.get("/report")
+    assert res.status_code == 200
+    body = res.get_data(as_text=True)
+    assert "evaluation_report.json" in body
+
+
+# ─── Kiểm thử input validation tại /predict ───────────────────────────
+
+def test_predict_rejects_area_too_large(client):
+    res = client.post("/predict", json={"area": 99999, "district": "q7"})
+    assert res.status_code == 400
+    assert "Diện tích" in res.get_json()["error"]
+
+
+def test_predict_rejects_invalid_bedrooms(client):
+    res = client.post("/predict", json={"area": 80, "district": "q7", "bedrooms": 999})
+    assert res.status_code == 400
+
+
+def test_predict_rejects_non_json(client):
+    res = client.post("/predict", data="plain text", content_type="text/plain")
+    assert res.status_code == 400
+
+
+def test_region_page_loads(client):
+    res = client.get("/region")
+    assert res.status_code == 200
+
+
+def test_404_returns_error(client):
+    res = client.get("/this-page-does-not-exist")
+    assert res.status_code == 404

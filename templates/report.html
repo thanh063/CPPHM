@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+
+{% block title %}Báo cáo mô hình | Dự đoán giá nhà Việt Nam{% endblock %}
+
+{% block content %}
+<div class="hero-shell mb-4">
+  <span class="soft-pill mb-3">Báo cáo mô hình</span>
+  <h1 class="display-6 fw-bold mb-3">Báo cáo đánh giá mô hình Bagging</h1>
+  <p class="lead text-white-50 mb-0">Tổng hợp các chỉ số đánh giá chính để trình bày trong báo cáo cuối kỳ và slide thuyết trình.</p>
+</div>
+
+<div class="row g-4 mb-4">
+  <div class="col-md-3 col-6">
+    <div class="metric-box">
+      <div class="metric-label">Test R²</div>
+      <div class="metric-value">{{ "%.3f"|format(report_view.test_metrics.r2 if report_view.test_metrics else 0) }}</div>
+    </div>
+  </div>
+  <div class="col-md-3 col-6">
+    <div class="metric-box">
+      <div class="metric-label">Test MAE</div>
+      <div class="metric-value">{{ "{:,.0f}".format(report_view.test_metrics.mae if report_view.test_metrics else 0) }}</div>
+    </div>
+  </div>
+  <div class="col-md-3 col-6">
+    <div class="metric-box">
+      <div class="metric-label">CV MAE</div>
+      <div class="metric-value">{{ "{:,.0f}".format(report_view.cv_metrics.mae if report_view.cv_metrics else 0) }}</div>
+    </div>
+  </div>
+  <div class="col-md-3 col-6">
+    <div class="metric-box">
+      <div class="metric-label">OOB R²</div>
+      <div class="metric-value">{{ "%.3f"|format(report_view.oob_score or 0) }}</div>
+    </div>
+  </div>
+</div>
+
+<div class="glass-card p-4 mb-4">
+  <h2 class="section-title h4 mb-3">Tóm tắt đánh giá</h2>
+  <div class="table-responsive">
+    <table class="table align-middle mb-0">
+      <tbody>
+        <tr><th class="text-nowrap">Test MAE</th><td>{{ "{:,.2f}".format(report_view.test_metrics.mae if report_view.test_metrics else 0) }} triệu VND</td></tr>
+        <tr><th class="text-nowrap">Test RMSE</th><td>{{ "{:,.2f}".format(report_view.test_metrics.rmse if report_view.test_metrics else 0) }} triệu VND</td></tr>
+        <tr><th class="text-nowrap">Test R²</th><td>{{ "%.4f"|format(report_view.test_metrics.r2 if report_view.test_metrics else 0) }}</td></tr>
+        <tr><th class="text-nowrap">MAPE</th><td>{{ "%.2f"|format(report_view.test_metrics.mape if report_view.test_metrics else 0) }}%</td></tr>
+        <tr><th class="text-nowrap">OOB score</th><td>{{ "%.4f"|format(report_view.oob_score or 0) }}</td></tr>
+        <tr><th class="text-nowrap">CV MAE</th><td>{{ "{:,.2f}".format(report_view.cv_metrics.mae if report_view.cv_metrics else 0) }} ± {{ "{:,.2f}".format(report_view.cv_metrics.mae_std if report_view.cv_metrics else 0) }} triệu VND</td></tr>
+        <tr><th class="text-nowrap">CV R²</th><td>{{ "%.4f"|format(report_view.cv_metrics.r2 if report_view.cv_metrics else 0) }} ± {{ "%.4f"|format(report_view.cv_metrics.r2_std if report_view.cv_metrics else 0) }}</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="glass-card p-4">
+  <h2 class="section-title h4 mb-3">So sánh mô hình</h2>
+  {% if report_view.compare_rows %}
+  <div class="table-responsive">
+    <table class="table table-striped align-middle mb-0">
+      <thead>
+        <tr>
+          <th>Mô hình</th>
+          <th>CV MAE</th>
+          <th>±</th>
+          <th>CV R²</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in report_view.compare_rows %}
+        <tr>
+          <td class="fw-semibold">{{ row.name }}</td>
+          <td>{{ "{:,.2f}".format(row.cv_mae) }}</td>
+          <td>{{ "{:,.2f}".format(row.cv_mae_std) }}</td>
+          <td>{{ "%.4f"|format(row.cv_r2) }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <p class="section-subtitle mb-0">Chưa có dữ liệu so sánh trong file báo cáo.</p>
+  {% endif %}
+</div>
+{% endblock %}
