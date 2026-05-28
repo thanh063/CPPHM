@@ -1,0 +1,272 @@
+\documentclass[sigconf]{acmart}
+
+\usepackage[utf8]{inputenc}
+\usepackage[vietnamese,english]{babel}
+\usepackage{booktabs}
+\usepackage{listings}
+\usepackage{amsmath}
+\usepackage{graphicx}
+
+% Cấu hình listings cho code snippet
+\lstset{
+  language=Python,
+  basicstyle=\ttfamily\small,
+  keywordstyle=\color{blue},
+  commentstyle=\color{gray},
+  stringstyle=\color{purple},
+  numbers=left,
+  numberstyle=\tiny\color{gray},
+  stepnumber=1,
+  numbersep=5pt,
+  backgroundcolor=\color{white},
+  showspaces=false,
+  showstringspaces=false,
+  showtabs=false,
+  frame=single,
+  rulecolor=\color{black},
+  tabsize=2,
+  captionpos=b,
+  breaklines=true,
+  breakatwhitespace=false,
+  title=\lstname
+}
+
+% metadata ACM
+\copyrightyear{2026}
+\acmYear{2026}
+\setcopyright{acmlicensed}
+\acmConference[CNMTPTPM '26]{Môn học Công nghệ Mới và Triển khai Phần mềm}{Tháng 5 năm 2026}{TP. Hồ Chí Minh, Việt Nam}
+\acmBooktitle{CNMTPTPM '26: Môn học Công nghệ Mới và Triển khai Phần mềm, Tháng 5 năm 2026, TP. Hồ Chí Minh, Việt Nam}
+\acmPrice{15.00}
+\acmDOI{10.1145/1122445.1122456}
+\acmISBN{978-1-4503-XXXX-X/18/06}
+
+\begin{document}
+
+\title{Dự đoán Giá Nhà Việt Nam sử dụng Thuật toán Bagging với Cây Quyết Định}
+
+\author{Ngô Công Thành (2212461)}
+\affiliation{%
+  \institution{Khoa Công nghệ Thông tin, Trường Đại học Bách khoa - ĐHQG-HCM}
+  \city{TP. Hồ Chí Minh}
+  \country{Việt Nam}
+}
+\email{ncongthanh27@gmail.com}
+
+\author{Phan Thành Phát (2212436)}
+\affiliation{%
+  \institution{Khoa Công nghệ Thông tin, Trường Đại học Bách khoa - ĐHQG-HCM}
+  \city{TP. Hồ Chí Minh}
+  \country{Việt Nam}
+}
+
+\author{Lý Gia Bảo (2213934)}
+\affiliation{%
+  \institution{Khoa Công nghệ Thông tin, Trường Đại học Bách khoa - ĐHQG-HCM}
+  \city{TP. Hồ Chí Minh}
+  \country{Việt Nam}
+}
+
+\begin{abstract}
+\selectlanguage{english}
+Predicting real estate prices is a critical yet challenging task due to high market volatility and noise in web-scraped data. This paper presents a machine learning pipeline using the Bootstrap Aggregating (Bagging) Ensemble algorithm with Decision Tree Regressors to predict housing prices in Vietnam. We developed a robust data crawler using Playwright to scrape real estate listings from mogi.vn. Trained on 35,833 clean, real-world records, our Bagging Regressor (with 200 estimators and a max depth of 20) achieves a Test $R^2$ score of 0.7414, an Out-of-Bag (OOB) $R^2$ of 0.7759, and a Mean Absolute Error (MAE) of 3,719 million VND. The ensemble model effectively reduces the prediction variance by 11.08\% compared to a single baseline Decision Tree.
+
+\vskip 0.5em
+\selectlanguage{vietnamese}
+\noindent \textbf{Tóm tắt---}Định giá bất động sản là một bài toán quan trọng nhưng đầy thử thách do tính biến động cao của thị trường và độ nhiễu lớn của dữ liệu thu thập từ các trang web. Bài báo này trình bày một quy trình học máy sử dụng thuật toán Ensemble Bagging (Bootstrap Aggregating) với mô hình cơ sở là Cây quyết định (Decision Tree Regressor) để dự đoán giá nhà tại Việt Nam. Chúng tôi xây dựng công cụ thu thập dữ liệu sử dụng Playwright, sau đó áp dụng quy trình làm sạch chuyên sâu phù hợp với thực tế thị trường Việt Nam. Được huấn luyện trên 35.833 mẫu dữ liệu thực tế sạch, mô hình Bagging Regressor (với 200 cây quyết định, độ sâu tối đa 20) đạt hệ số xác định trên tập Test $R^2$ là 0.7414, điểm Out-of-Bag (OOB) $R^2$ đạt 0.7759 và sai số tuyệt đối trung bình (MAE) là 3.719 triệu VND. Mô hình ensemble giúp giảm 11.08\% phương sai sai số dự đoán so với mô hình cây quyết định đơn lẻ.
+\end{abstract}
+
+\keywords{Dự đoán giá nhà, Học máy, Bagging Regressor, Cây quyết định, Làm sạch dữ liệu, Playwright}
+
+\maketitle
+
+\selectlanguage{vietnamese}
+
+\section{Introduction}
+Thị trường bất động sản (BĐS) Việt Nam đóng vai trò quan trọng trong nền kinh tế nhưng lại đối mặt với sự bất đối xứng thông tin lớn và thiếu các công cụ định giá tự động (Automated Valuation Models - AVM) đáng tin cậy. Việc xác định giá bán hiện tại phần lớn vẫn phụ thuộc vào kinh nghiệm cá nhân của các môi giới hoặc các khảo sát thủ công tốn thời gian. Điều này dẫn đến sự thiếu minh bạch và làm tăng rủi ro cho cả người mua lẫn tổ chức tín dụng khi định giá tài sản thế chấp.
+
+Sự phát triển của học máy (Machine Learning) mở ra cơ hội xây dựng các mô hình định giá tự động có độ chính xác cao dựa trên các thuộc tính vật lý của ngôi nhà (diện tích, số phòng ngủ, phòng tắm, số tầng, vị trí). Tuy nhiên, thách thức lớn nhất khi áp dụng học máy vào thị trường BĐS Việt Nam nằm ở \textbf{chất lượng dữ liệu}. Dữ liệu thu thập từ các cổng thông tin trực tuyến chứa lượng lớn tin giả, tin trùng lặp, lỗi nhập liệu (ví dụ: nhầm lẫn đơn vị diện tích đất với đơn vị diện tích sàn, nhầm lẫn tổng giá bán với đơn vị giá/m²). Đồng thời, mối quan hệ giữa các đặc trưng và giá nhà mang tính phi tuyến tính cao và biến động mạnh theo từng khu vực.
+
+Để giải quyết vấn đề này, nghiên cứu này đề xuất một quy trình học máy hoàn chỉnh:
+\begin{enumerate}
+    \item Xây dựng crawler tự động sử dụng thư viện Playwright để thu thập dữ liệu thực tế từ trang \texttt{mogi.vn}, vượt qua các cơ chế chống bot để đảm bảo tính ổn định.
+    \item Thiết kế pipeline làm sạch và tiền xử lý dữ liệu chuyên sâu để loại bỏ triệt để các nhiễu đặc thù của thị trường BĐS Việt Nam.
+    \item Áp dụng thuật toán \textbf{Bagging Ensemble} với mô hình cơ sở là Cây quyết định (Decision Tree Regressor) để giải quyết tính phi tuyến và giảm hiện tượng quá khớp (overfitting), giảm phương sai dự đoán.
+\end{enumerate}
+
+---
+
+\section{Related Work}
+Trong những năm gần đây, bài toán dự đoán giá nhà sử dụng thuật toán học máy đã được nghiên cứu rộng rãi. Các thuật toán truyền thống như Hồi quy tuyến tính (Linear Regression) thường tỏ ra kém hiệu quả do không thể biểu diễn các mối quan hệ phi tuyến phức tạp giữa vị trí, diện tích và giá bán.
+
+Để khắc phục hạn chế này, các thuật toán dựa trên cây quyết định như Cây quyết định đơn lẻ (Decision Tree - DT) bắt đầu được áp dụng. Mặc dù DT có khả năng học các mối quan hệ phi tuyến và tương tác giữa các đặc trưng mà không cần tiền xử lý phức tạp, chúng lại cực kỳ nhạy cảm với dữ liệu nhiễu và dễ rơi vào tình trạng quá khớp (high variance). 
+
+Để giải quyết vấn đề quá khớp của DT, các phương pháp Ensemble (học máy kết hợp) được đề xuất. Leo Breiman (1996) đã giới thiệu thuật toán \textbf{Bagging} (Bootstrap Aggregating) \cite{breiman1996bagging}, sử dụng kỹ thuật lấy mẫu lặp lại có hoàn lại để xây dựng nhiều cây quyết định độc lập và trung bình hóa các kết quả dự đoán của chúng. Thuật toán Random Forest \cite{breiman2001randomforest} là một biến thể của Bagging bằng cách chọn ngẫu nhiên một tập con các đặc trưng tại mỗi phân ngưỡng của cây để tăng tính đa dạng. Bên cạnh đó, các thuật toán Boosting như Gradient Boosting (GBDT) và LightGBM \cite{ke2017lightgbm} xây dựng các cây quyết định tuần tự để sửa sai cho các cây phía trước. Tuy nhiên, Boosting dễ bị ảnh hưởng bởi nhiễu (noise) hơn Bagging và yêu cầu tinh chỉnh siêu tham số phức tạp hơn. Trong nghiên cứu này, chúng tôi tập trung chứng minh tính hiệu quả của Bagging trong việc giảm phương sai trên dữ liệu BĐS thực tế đầy nhiễu tại Việt Nam.
+
+---
+
+\section{Methodology}
+
+\subsection{Tổng quan về Bagging (Bootstrap Aggregating)}
+Bagging là một phương pháp ensemble được thiết kế để cải thiện độ ổn định và chính xác của các thuật toán học máy bằng cách giảm phương sai sai số dự đoán. 
+
+Giả sử tập dữ liệu huấn luyện $D$ có kích thước $N$. Thuật toán hoạt động như sau:
+\begin{enumerate}
+    \item Tạo ra $M$ tập dữ liệu huấn luyện con $D_i$ ($i = 1, \dots, M$) bằng cách lấy mẫu ngẫu nhiên có hoàn lại (bootstrap sampling) từ $D$. Kích thước của mỗi $D_i$ bằng $N$. Xác suất một mẫu không được chọn trong một tập con xấp xỉ bằng:
+    \begin{equation{}}
+        \left(1 - \frac{1}{N}\right)^N \approx e^{-1} \approx 36.8\%
+    \end{equation{}}
+    Các mẫu không được chọn này được gọi là dữ liệu \textbf{Out-of-Bag (OOB)} và được sử dụng để đánh giá mô hình mà không cần tập validation riêng biệt.
+    \item Huấn luyện một mô hình cơ sở $f_i(x)$ (trong nghiên cứu này là Decision Tree Regressor) độc lập trên mỗi tập dữ liệu con $D_i$.
+    \item Kết hợp kết quả dự đoán của $M$ mô hình bằng phương pháp trung bình cộng đối với bài toán hồi quy:
+    \begin{equation{}}
+        f(x) = \frac{1}{M} \sum_{i=1}^{M} f_i(x)
+    \end{equation{}}
+\end{enumerate}
+
+\subsection{Quy trình Tiền xử lý (Preprocessing Pipeline)}
+Chúng tôi xây dựng một quy trình tiền xử lý (pipeline) dữ liệu chuẩn hóa sử dụng lớp \texttt{ColumnTransformer} của thư viện Scikit-Learn \cite{pedregosa2011scikit} nhằm đảm bảo tính toàn vẹn và ngăn chặn hiện tượng rò rỉ dữ liệu (data leakage):
+\begin{itemize}
+    \item \textbf{Đặc trưng số (Numerical Features)}: Gồm \texttt{area\_m2} (diện tích), \texttt{log\_area} (logarithm của diện tích), \texttt{district\_log\_median} (trung vị log giá của quận/huyện để làm proxy vị trí), \texttt{bedrooms\_n} (phòng ngủ), \texttt{bathrooms\_n} (phòng tắm), và \texttt{floors\_n} (số tầng). Các đặc trưng này được chuẩn hóa thang đo bằng \texttt{StandardScaler}.
+    \item \textbf{Đặc trưng phân loại (Categorical Features)}: Gồm \texttt{house\_type} (loại nhà đất như căn hộ, nhà phố, biệt thự, đất nền). Đặc trưng này được mã hóa nhị phân bằng \texttt{OneHotEncoder(handle\_unknown='ignore')}.
+\end{itemize}
+
+\subsection{Log-transform Biến mục tiêu}
+Phân phối giá nhà đất trong thực tế thường bị lệch phải nghiêm trọng (skewed distribution) do một số ít bất động sản có giá trị cực kỳ lớn. Để ổn định phương sai sai số và đưa phân phối mục tiêu về dạng chuẩn hơn, chúng tôi áp dụng phép biến đổi logarit cho biến mục tiêu $y$ (giá nhà tính bằng triệu VND):
+\begin{equation}
+    y_{\text{trans}} = \ln(y + 1)
+\end{equation}
+Kết quả dự đoán từ mô hình sau đó được đưa ngược lại thang đo gốc bằng phép biến đổi mũ:
+\begin{equation}
+    y_{\text{pred}} = e^{y_{\text{trans\_pred}}} - 1
+\end{equation}
+
+---
+
+\section{Data Collection \& Preprocessing}
+
+\subsection{Thu thập Dữ liệu (Data Collection)}
+Chúng tôi phát triển công cụ cào dữ liệu \texttt{crawler.py} sử dụng thư viện \textbf{Playwright} trong Python để điều khiển trình duyệt Chromium không giao diện (headless browser) nhằm thu thập dữ liệu từ trang \texttt{mogi.vn}. Để vượt qua các cơ chế chống bot và thu thập dữ liệu tự động ổn định, chúng tôi áp dụng các kỹ thuật giả lập hành vi trình duyệt thực thông qua User-Agent ngẫu nhiên, mô phỏng cuộn trang, tương tác người dùng và thiết lập khoảng trễ ngẫu nhiên (random delay từ 1.5 đến 10 giây). Tổng số mẫu thô thu thập được từ trang \texttt{mogi.vn} là khoảng \textbf{35.833} bản ghi.
+
+\subsection{Làm sạch Dữ liệu (Preprocessing)}
+Dữ liệu thô từ web có độ nhiễu lớn. Chúng tôi xây dựng bộ lọc \texttt{clean\_data.py} để loại bỏ dữ liệu bất thường dựa trên các tiêu chí thực tế tại thị trường Việt Nam:
+\begin{enumerate}
+    \item \textbf{Diện tích đất hợp lý}: Chỉ giữ lại các bất động sản có diện tích đất trong khoảng từ $10\text{m}^2$ đến $2000\text{m}^2$. Các mẫu ngoài khoảng này (ví dụ diện tích quá nhỏ hoặc diện tích quá lớn không đại diện cho nhà đất thông thường) đều bị loại bỏ.
+    \item \textbf{Khoảng giá hợp lý}: Chỉ giữ các bất động sản có tổng giá trị từ \textbf{100 triệu VND} đến \textbf{200 tỷ VND} để phù hợp với phân khúc giao dịch phổ biến của thị trường.
+    \item \textbf{Đơn giá trên mét vuông (ppm2)}: Giới hạn đơn giá từ \textbf{3 triệu VND/m²} đến \textbf{300 triệu VND/m²} để loại bỏ các lỗi nhập liệu hoặc tin ảo.
+    \item \textbf{Khử trùng lặp (Deduplication)}: Loại bỏ các bản ghi trùng nhau hoàn toàn về bộ ba đặc trưng chính gồm \texttt{(price, area, location)}.
+    \item \textbf{Lọc ngoại lệ theo tỉnh (IQR Per-province)}: Với mỗi tỉnh thành, tính toán khoảng biến thiên IQR của đơn giá/m² và loại bỏ các mẫu nằm ngoài khoảng giới hạn $[Q_1 - 4 \times IQR, Q_3 + 4 \times IQR]$.
+\end{enumerate}
+
+Tập dữ liệu sau khi làm sạch và phân lọc bao gồm \textbf{34.041} mẫu huấn luyện (Train Set) và \textbf{1.792} mẫu kiểm thử độc lập (Test Set, tương đương 5\%).
+
+---
+
+\section{Experiments \& Results}
+
+\subsection{Thiết lập thực nghiệm}
+Chúng tôi so sánh mô hình đề xuất Bagging Regressor (\texttt{n\_estimators} = 200, \texttt{max\_depth} = 20) với mô hình Baseline (Decision Tree đơn lẻ), Random Forest ($n=100$) và thuật toán Gradient Boosting LightGBM. Việc đánh giá được thực hiện qua phương pháp kiểm định chéo 5-fold Cross-Validation trên tập Train. Các chỉ số đo lường gồm sai số tuyệt đối trung bình (MAE) tính bằng triệu VND và hệ số xác định $R^2$.
+
+\subsection{Kết quả kiểm định chéo (5-Fold CV)}
+Bảng \ref{tab:model_comparison} trình bày kết quả so sánh các mô hình trên tập huấn luyện.
+
+\begin{table}[h]
+\caption{So sánh hiệu năng các mô hình bằng 5-Fold Cross Validation}
+\label{tab:model_comparison}
+\begin{tabular}{lcc}
+\toprule
+Mô hình & CV MAE (triệu VND) & CV $R^2$ \\
+\midrule
+Decision Tree (Baseline) & $3983.4 \pm 41.5$ & 0.7394 \\
+Bagging Regressor (n=10) & $3772.9 \pm 57.5$ & 0.7684 \\
+Bagging Regressor (n=25) & $3748.5 \pm 48.3$ & 0.7710 \\
+Bagging Regressor (n=50) & $3732.4 \pm 51.1$ & 0.7726 \\
+Bagging Regressor (n=100) & $3726.2 \pm 52.0$ & 0.7731 \\
+Random Forest (n=100) & $3716.8 \pm 50.0$ & 0.7731 \\
+\textbf{Bagging Regressor (n=200)} & $\mathbf{3717.1 \pm 51.2}$ & $\mathbf{0.7734}$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Kết quả thực nghiệm cho thấy việc tăng số lượng cây trong mô hình Bagging từ 10 lên 200 giúp giảm dần sai số MAE và tăng độ chính xác $R^2$. Mô hình Bagging với 200 cây đạt độ chính xác tương đương với Random Forest nhưng có thời gian huấn luyện tối ưu hơn trên tập dữ liệu này. So với mô hình cây đơn lẻ (Decision Tree), mô hình Bagging với 200 cây giảm được \textbf{11.08\% phương sai sai số dự đoán} (variance reduction).
+
+\subsection{Kết quả trên tập kiểm thử độc lập (Test Set)}
+Đánh giá mô hình tốt nhất Bagging (\texttt{n\_estimators} = 200) trên tập kiểm thử độc lập 5\% thu được kết quả:
+\begin{itemize}
+    \item Sai số tuyệt đối trung bình (MAE): \textbf{3.719,3 triệu VND} (tương đương $\approx$ 3,7 tỷ VND).
+    \item Hệ số xác định $R^2$: \textbf{0.7414}.
+    \item Hệ số xác định Out-of-Bag (OOB $R^2$): \textbf{0.7759}.
+    \item Sai số phần trăm tuyệt đối trung bình (MAPE): \textbf{44.82\%}.
+\end{itemize}
+
+Mức MAPE khoảng 44\% phản ánh đúng thực tế thị trường BĐS Việt Nam do yếu tố giá cả phụ thuộc rất lớn vào các đặc trưng phi vật lý không có trong dữ liệu (ví dụ: yếu tố phong thủy, hành vi thương lượng của chủ nhà, độ rộng ngõ trước nhà, hướng nhà).
+
+\subsection{Mô tả các Biểu đồ Đánh giá}
+Chúng tôi đã xuất 5 biểu đồ phân tích hiệu năng mô hình tự động vào thư mục \texttt{plots/}:
+\begin{enumerate}
+    \item \textbf{Prediction vs Actual} (\texttt{1\_prediction\_vs\_actual.png}): Trực quan hóa giá trị dự đoán so với giá trị thực tế. Đường chéo $y=x$ biểu diễn dự đoán hoàn hảo. Các điểm phân tán tập trung bám sát đường chéo trong khoảng giá dưới 30 tỷ VND, và có xu hướng phân tán rộng hơn ở phân khúc nhà cao cấp trên 50 tỷ VND.
+    \item \textbf{Residual Distribution} (\texttt{2\_residuals.png}): Biểu đồ phân phối sai số dự đoán ($\text{Residual} = \text{Giá thực} - \text{Giá dự đoán}$). Biểu đồ có dạng phân phối chuẩn đối xứng quanh điểm 0, chứng minh sai số dự đoán mang tính ngẫu nhiên và mô hình không bị lệch xu hướng (bias).
+    \item \textbf{Model Comparison} (\texttt{3\_model\_comparison.png}): So sánh trực quan giá trị MAE giữa các thuật toán. Biểu đồ cột minh họa rõ rệt sự sụt giảm sai số từ Decision Tree xuống các biến thể Bagging và Random Forest.
+    \item \textbf{Learning Curve} (\texttt{4\_learning\_curve.png}): Vẽ sai số MAE của tập Train và tập Validation theo số lượng cây quyết định. Đường cong hội tụ nhanh sau 50 cây và ổn định ở 200 cây, cho thấy mô hình đạt trạng thái tối ưu không bị underfitting hay overfitting.
+    \item \textbf{Feature Importance} (\texttt{5\_feature\_importance.png}): Mức độ quan trọng của các đặc trưng đầu vào dựa trên thuật toán sắp xếp ngẫu nhiên đặc trưng. Kết quả chỉ ra \texttt{district\_log\_median} (vị trí quận/huyện) và \texttt{area\_m2} (diện tích) là hai yếu tố có ảnh hưởng quyết định nhất đến giá trị bất động sản, tiếp theo là \texttt{floors\_n} và \texttt{house\_type}.
+\end{enumerate}
+
+---
+
+\section{Conclusion}
+Nghiên cứu này đã xây dựng thành công một quy trình học máy tự động hóa từ khâu thu thập dữ liệu bằng Playwright, làm sạch dữ liệu thực tế thị trường Việt Nam cho đến huấn luyện mô hình Bagging Regressor dự đoán giá nhà. Kết quả thực nghiệm trên 35.833 mẫu dữ liệu sạch chứng minh thuật toán Bagging giảm phương sai sai số hiệu quả (11.08\% so với cây quyết định đơn lẻ), đạt hệ số xác định $R^2 = 0.7414$.
+
+\textbf{Hạn chế và Hướng phát triển}:
+\begin{itemize}
+    \item \textit{Hạn chế}: Mô hình hiện tại chưa tích hợp các yếu tố quan trọng như độ rộng mặt tiền, hướng nhà, khoảng cách đến đường lớn do các website nguồn thường thiếu các thông tin này hoặc ghi nhận không chuẩn xác.
+    \item \textit{Hướng phát triển}: Trong tương lai, chúng tôi hướng tới việc thu thập thêm các đặc trưng không gian (Geospatial features) như tọa độ kinh độ/vĩ độ để tính khoảng cách đến các tiện ích công cộng. Đồng thời đề xuất phát triển các mô hình Bagging riêng biệt cho từng phân khúc bất động sản chuyên biệt (ví dụ: mô hình riêng cho căn hộ chung cư và nhà phố) để tăng độ chính xác của AVM.
+\end{itemize}
+
+---
+
+\bibliographystyle{ACM-Reference-Format}
+\begin{thebibliography}{9}
+
+\bibitem{breiman1996bagging}
+Leo Breiman. 1996.
+\newblock Bagging predictors.
+\newblock {\em Machine learning} 24, 2 (1996), 123--140.
+
+\bibitem{breiman2001randomforest}
+Leo Breiman. 2001.
+\newblock Random forests.
+\newblock {\em Machine learning} 45, 1 (2001), 5--32.
+
+\bibitem{pedregosa2011scikit}
+Fabian Pedregosa, Ga{\"e}l Varoquaux, Alexandre Gramfort, Vincent Michel, Bertrand Thirion, Olivier Grisel, Mathieu Blondel, Peter Prettenhofer, Ron Weiss, Vincent Dubourg, and others. 2011.
+\newblock Scikit-learn: Machine learning in Python.
+\newblock {\em Journal of Machine Learning Research} 12 (2011), 2825--2830.
+
+\bibitem{ke2017lightgbm}
+Guolin Ke, Qi Meng, Thomas Finley, Taifeng Wang, Wei Chen, Weidong Ma, Qiwei Ye, and Tie-Yan Liu. 2017.
+\newblock Lightgbm: A highly efficient gradient boosting decision tree.
+\newblock In {\em Advances in Neural Information Processing Systems} 30 (2017).
+
+\bibitem{hastie2009elements}
+Trevor Hastie, Robert Tibshirani, and Jerome Friedman. 2009.
+\newblock {\em The Elements of Statistical Learning: Data Mining, Inference, and Prediction} (2nd ed.).
+\newblock Springer Science \& Business Media.
+
+\bibitem{liaw2002classification}
+Andy Liaw, Matthew Wiener, and others. 2002.
+\newblock Classification and regression by randomForest.
+\newblock {\em R news} 2, 3 (2002), 18--22.
+
+\bibitem{quinlan1986induction}
+J. Ross Quinlan. 1986.
+\newblock Induction of decision trees.
+\newblock {\em Machine learning} 1, 1 (1986), 81--106.
+
+\bibitem{friedman2001greedy}
+Jerome~H Friedman. 2001.
+\newblock Greedy function approximation: a gradient boosting machine.
+\newblock {\em Annals of statistics} (2001), 1189--1232.
+
+\end{thebibliography}
+
+\end{document}
